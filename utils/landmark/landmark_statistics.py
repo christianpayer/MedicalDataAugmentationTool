@@ -1,35 +1,78 @@
 
 import numpy as np
 
+
 class LandmarkStatistics(object):
+    """
+    This class is used to calcualte landmark statistics, e.g., mean point error, outliers, etc
+    """
     def __init__(self):
+        """
+        Initializer.
+        """
         self.predicted_landmarks = {}
         self.groundtruth_landmarks = {}
         self.spacings = {}
         self.distances = {}
 
     def set_groundtruth_and_prediction(self, predicted_landmarks, groundtruth_landmarks, spacings, normalization_factor=1.0, normalization_indizes=None):
+        """
+        Sets groundtruth and prediction landmark dicts.
+        :param predicted_landmarks: Dict of predicted Landmark objects.
+        :param groundtruth_landmarks: Dict of groundtruth Landmark objects.
+        :param spacings: Dict of image spacings.
+        :param normalization_factor: Normalization factor used for distance calculation.
+        :param normalization_indizes: Normalization indizes used for distance calculation. The distance of these two point indizes is cosidered to be 1.0.
+        :return:
+        """
         self.predicted_landmarks = predicted_landmarks
         self.groundtruth_landmarks = groundtruth_landmarks
         self.spacings = spacings
         for key in predicted_landmarks.keys():
             self.distances[key] = self.get_distances(predicted_landmarks[key], groundtruth_landmarks[key], spacings[key], normalization_factor, normalization_indizes)
 
-    def add_landmarks(self, id, predicted, groundtruth, spacing=None, normalization_factor=1.0, normalization_indizes=None):
-        self.predicted_landmarks[id] = predicted
-        self.groundtruth_landmarks[id] = groundtruth
-        self.spacings[id] = spacing
-        self.distances[id] = self.get_distances(predicted, groundtruth, spacing, normalization_factor, normalization_indizes)
+    def add_landmarks(self, image_id, predicted, groundtruth, spacing=None, normalization_factor=1.0, normalization_indizes=None):
+        """
+        Add landmarks for a given ID.
+        :param image_id: The image id.
+        :param predicted: The predicted landmarks.
+        :param groundtruth: The groundtruth landmarks.
+        :param spacing: The image spacing.
+        :param normalization_factor: Normalization factor used for distance calculation.
+        :param normalization_indizes: Normalization indizes used for distance calculation. The distance of these two point indizes is cosidered to be 1.0.
+        :return:
+        """
+        self.predicted_landmarks[image_id] = predicted
+        self.groundtruth_landmarks[image_id] = groundtruth
+        self.spacings[image_id] = spacing
+        self.distances[image_id] = self.get_distances(predicted, groundtruth, spacing, normalization_factor, normalization_indizes)
 
-    def get_distance(self, predicted, groundtruth, spacing, normalization_factor):
-        if not groundtruth.is_valid or not predicted.is_valid:
+    def get_distance(self, l0, l1, spacing, normalization_factor):
+        """
+        Returns the distance between two landmarks.
+        :param l0: Landmark 1.
+        :param l1: Landmark 2.
+        :param spacing: The image spacing.
+        :param normalization_factor: Normalization factor used for distance calculation.
+        :return: The distance.
+        """
+        if not l1.is_valid or not l0.is_valid:
             return np.nan
         if spacing is not None:
-            return normalization_factor * np.linalg.norm((predicted.coords - groundtruth.coords) * spacing)
+            return normalization_factor * np.linalg.norm((l0.coords - l1.coords) * spacing)
         else:
-            return normalization_factor * np.linalg.norm(predicted.coords - groundtruth.coords)
+            return normalization_factor * np.linalg.norm(l0.coords - l1.coords)
 
     def get_distances(self, predicted, groundtruth, spacing, normalization_factor=1.0, normalization_indizes=None):
+        """
+        Returns a list of distances between the predicted and groundtruth landmarks.
+        :param predicted: List of predicted landmarks.
+        :param groundtruth: List of groundtruth landmarks.
+        :param spacing: Image spacing.
+        :param normalization_factor: Normalization factor used for distance calculation.
+        :param normalization_indizes: If not None, the distance of these two point indizes is cosidered to be 1.0.
+        :return:
+        """
         if normalization_indizes is not None:
             normalization_distance = self.get_distance(groundtruth[normalization_indizes[0]], groundtruth[normalization_indizes[1]], None, 1.0)
             if np.isnan(normalization_distance):
@@ -38,19 +81,31 @@ class LandmarkStatistics(object):
         return [self.get_distance(l0, l1, spacing, normalization_factor) for (l0, l1) in zip(predicted, groundtruth)]
 
     def get_pe(self):
+        """
+        Returns the point error dictionary of all distances.
+        :return: The point errors.
+        """
         pe = {}
-        for id, distances in self.distances.items():
-            for i in range(len(distances)):
-                pe[id + '_' + str(i)] = distances[i]
+        for image_id, distances_per_image in self.distances.items():
+            for i in range(len(distances_per_image)):
+                pe[image_id + '_' + str(i)] = distances_per_image[i]
         return pe
 
     def get_ipe(self):
+        """
+        Returns the image point error dictionary of all images.
+        :return: The image point errors.
+        """
         ipe = {}
         for id, distances in self.distances.items():
             ipe[id] = np.nansum(np.array(list(distances))) / len(distances)
         return ipe
 
     def get_pe_statistics(self):
+        """
+        Returns mean, stddev and median point errors,
+        :return: mean, stddev and median
+        """
         pe = np.array(list(self.distances.values()))
         mean = np.nanmean(pe)
         stdev = np.nanstd(pe)
@@ -58,6 +113,10 @@ class LandmarkStatistics(object):
         return mean, stdev, median
 
     def get_ipe_statistics(self):
+        """
+        Returns mean, stddev and median image point errors,
+        :return: mean, stddev and median
+        """
         ipe = np.array(list(self.get_ipe().values()))
         mean = np.nanmean(ipe)
         stdev = np.nanstd(ipe)
@@ -65,6 +124,11 @@ class LandmarkStatistics(object):
         return mean, stdev, median
 
     def get_num_outliers(self, radii):
+        """
+        Returns number of point error outliers for given radii.
+        :param radii: List of radii.
+        :return: List of number of outliers for the given radii.
+        """
         pe = np.array(list(self.distances.values()))
         radii_outliers = []
         for r in radii:
@@ -97,6 +161,10 @@ class LandmarkStatistics(object):
         return correct
 
     def get_num_valid_distances(self):
+        """
+        Returns the number of valid distances (where groundtruth/prediction is not none) and the number of all distances.
+        :return: The number of valid distances and the number of distances.
+        """
         distances_array = np.array(list(self.distances.values()))
         num_distances = distances_array.size
         num_invalid_distances = np.count_nonzero(np.isnan(distances_array))
@@ -104,46 +172,76 @@ class LandmarkStatistics(object):
         return num_valid_distances, num_distances
 
     def get_ipe_overview_string(self):
+        """
+        Returns a overview string of the ipe statistics. Mean, stddev and median.
+        :return: Overview string.
+        """
         stat = self.get_ipe_statistics()
         overview_string = 'IPE:\n'
-        overview_string += f'mean:   {stat[0]:.2f}\n'
-        overview_string += f'std:    {stat[1]:.2f}\n'
-        overview_string += f'median: {stat[2]:.2f}\n'
+        overview_string += 'mean:   {:.2f}\n'.format(stat[0])
+        overview_string += 'std:    {:.2f}\n'.format(stat[1])
+        overview_string += 'median: {:.2f}\n'.format(stat[2])
         return overview_string
 
     def get_pe_overview_string(self):
+        """
+        Returns a overview string of the pe statistics. Mean, stddev and median.
+        :return: Overview string.
+        """
         num_valid_distances, num_distances = self.get_num_valid_distances()
         stat = self.get_pe_statistics()
-        overview_string = f'PE ({num_valid_distances} out of {num_distances} valid):\n'
-        overview_string += f'mean:   {stat[0]:.2f}\n'
-        overview_string += f'std:    {stat[1]:.2f}\n'
-        overview_string += f'median: {stat[2]:.2f}\n'
+        overview_string = 'PE ({} out of {} valid):\n'.format(num_valid_distances, num_distances)
+        overview_string += 'mean:   {:.2f}\n'.format(stat[0])
+        overview_string += 'std:    {:.2f}\n'.format(stat[1])
+        overview_string += 'median: {:.2f}\n'.format(stat[2])
         return overview_string
 
     def get_outliers_pe_string(self, radii):
+        """
+        Returns a overview string for the number of outliers.
+        :param radii: List of radii.
+        :return: Overview string.
+        """
         outliers = self.get_num_outliers(radii)
         num_valid_distances, _ = self.get_num_valid_distances()
         overview_string = ''
         for r, outlier in zip(radii, outliers):
-            overview_string += f'#outliers >= {r}: {outlier} ({100 * outlier / num_valid_distances:.2f}%)\n'
+            overview_string += '#outliers >= {}: {} ({:.2f}%)\n'.format(r, outlier, 100 * outlier / num_valid_distances)
         return overview_string
 
     def get_per_instance_outliers_string(self, radius):
-        overview_string = f'individual #outliers >= {radius}\n'
+        """
+        Returns an overview string of all image_ids, if they contain at least an outlier > radius.
+        :param radius: Outlier radius.
+        :return: Overview string.
+        """
+        overview_string = 'individual #outliers >= {}\n'.format(radius)
         for image_id, distances in self.distances.items():
             outliers = [(i, distance) for i, distance in enumerate(distances) if distance >= radius]
             if len(outliers) > 0:
-                overview_string += f'{image_id} {len(outliers)} outliers: '
-                outlier_strings = [f'{i} ({distance:.2f})' for i, distance in outliers]
+                overview_string += '{} {} outliers: '.format(image_id, len(outliers))
+                outlier_strings = ['{} ({:.2f})'.format(i, distance) for i, distance in outliers]
                 overview_string += ', '.join(outlier_strings) + '\n'
         return overview_string
 
     def get_correct_id_string(self, max_distance):
+        """
+        Returns the correct id rate string.
+        :param max_distance: Distance to check.
+        :return: Overview string.
+        """
         correct_id = self.get_correct_id(max_distance)
         num_valid_distances, _ = self.get_num_valid_distances()
-        return f'#correct_id <= {max_distance}: {correct_id} ({100 * correct_id / num_valid_distances:.2f}%)\n'
+        return '#correct_id <= {}: {} ({:.2f}%)\n'.format(max_distance, correct_id, 100 * correct_id / num_valid_distances)
 
     def get_overview_string(self, outlier_radii=None, per_instance_outliers_radius=None, correct_id_distance=None):
+        """
+        Returns an overall overview string.
+        :param outlier_radii: The outlier radii.
+        :param per_instance_outliers_radius: The per instance outlier radius (see get_per_instance_outliers_string())
+        :param correct_id_distance: The correct id distance (see get_correct_id_string())
+        :return: Overview string.
+        """
         overview_string = ''
         overview_string += self.get_pe_overview_string()
         overview_string += self.get_ipe_overview_string()
