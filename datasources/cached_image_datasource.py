@@ -54,7 +54,8 @@ class CachedImageDataSource(ImageDataSource):
                                                     preprocessing=preprocessing,
                                                     sitk_pixel_type=sitk_pixel_type,
                                                     return_none_if_not_found=return_none_if_not_found)
-        self.cache = LRUCache(cache_maxsize, missing=self.load_and_preprocess, getsizeof=self.image_size)
+        self.cache = LRUCache(cache_maxsize, getsizeof=self.image_size)
+        self.cache.__missing__ = self.load_and_preprocess
         self.lock = Lock()
 
     def image_size(self, image):
