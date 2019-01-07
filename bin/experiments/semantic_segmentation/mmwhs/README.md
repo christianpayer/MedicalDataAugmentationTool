@@ -18,6 +18,8 @@ The images need to be reoriented to RAI:
 
 After these commands, copy the resulting files into the folders `mmwhs_dataset/mr_mha` and `mmwhs_dataset/ct_mha` accordingly. For each file from the training dataset, there should be an image and label file (e.g., `ct_train_1001_image.mha` and `ct_train_1001_label.mha`). For each file from the testing dataset, there should be an image file (e.g., `ct_test_2010_image.mha`)
 
+Update: If the program c3d generates error messages, you could also try to run the script `reorient.py`, which should produce the same results.
+
 ### Train models
 Run `main.py` to train the network. Adapt parameters in the file to use either MR or CT and to define cross validation or the full training/testing.
 
