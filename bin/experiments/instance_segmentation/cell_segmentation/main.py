@@ -14,6 +14,7 @@ import utils.io.text
 import utils.sitk_np
 import utils.sitk_image
 from iterators.id_list_iterator import IdListIterator
+from clustering import InstanceImageCreator
 
 
 class MainLoop(MainLoopBase):
@@ -28,7 +29,7 @@ class MainLoop(MainLoopBase):
         self.test_iter = 5000
         self.disp_iter = 100
         self.snapshot_iter = self.test_iter
-        self.test_initialization = True
+        self.test_initialization = False
         self.current_iter = 0
         self.reg_constant = 0.00001
         self.use_batch_norm = False
@@ -38,15 +39,24 @@ class MainLoop(MainLoopBase):
         self.image_size = [256, 256]
         self.output_size = self.image_size
         self.data_format = 'channels_first'
-        self.num_frames = 10
+        self.num_frames = 1
         self.embeddings_dim = 16
         self.test_on_challenge_data = True
+        self.create_instances = True
+        self.clustering_coord_factors = 0.01
+        self.clustering_min_label_size = 50
         self.challenge_base_folder = '../celltrackingchallenge/'
         self.output_base_folder = '/media1/experiments/cell_tracking/miccai2018_segmentation/' + self.dataset_name
         self.training_base_folder = os.path.join(self.challenge_base_folder, 'trainingdataset/', self.dataset_name)
         self.testing_base_folder = os.path.join(self.challenge_base_folder, 'challengedataset/', self.dataset_name)
         self.output_folder = os.path.join(self.output_base_folder, self.output_folder_timestamp())
         self.embedding_factors = {'bac': 1, 'tra': 1}
+        if self.test_on_challenge_data:
+            self.train_id_file = 'tra_all.csv'
+            self.val_id_file = 'tra_all.csv'
+        else:
+            self.train_id_file = 'tra_train.csv'
+            self.val_id_file = 'tra_val.csv'
         instance_image_radius_factors = {'DIC-C2DH-HeLa': 0.2,
                                          'Fluo-C2DL-MSC': 0.6,
                                          'Fluo-N2DH-GOWT1': 0.2,
@@ -87,15 +97,15 @@ class MainLoop(MainLoopBase):
                       'PhC-C2DH-U373': False,
                       'PhC-C2DL-PSC': True}
         pad_image = pad_images[self.dataset_name]
-        self.bitwise_instance_image = False
-        self.dataset = Dataset(self.image_size, num_frames=1,
+        self.dataset = Dataset(self.image_size,
+                               self.num_frames,
                                base_folder=self.training_base_folder,
                                data_format=self.data_format,
-                               save_debug_images=True,
+                               save_debug_images=False,
                                instance_image_radius_factor=instance_image_radius_factor,
                                max_num_instances=32,
-                               train_id_file='tra_all.csv',
-                               val_id_file='tra_all.csv',
+                               train_id_file=self.train_id_file,
+                               val_id_file=self.val_id_file,
                                image_gaussian_blur_sigma=1.0,
                                label_gaussian_blur_sigma=label_gaussian_blur_sigma,
                                normalization_consideration_factors=normalization_consideration_factor,
@@ -104,6 +114,7 @@ class MainLoop(MainLoopBase):
         self.dataset_train = self.dataset.dataset_train_single_frame()
         self.dataset_val = self.dataset.dataset_val_single_frame()
         self.dataset_train.get_next()
+
         self.setup_base_folder = os.path.join(self.training_base_folder, 'setup')
         self.video_frame_list_file_name = os.path.join(self.setup_base_folder, 'frames.csv')
         self.iterator_val = IdListIterator(os.path.join(self.setup_base_folder, 'video_only_all.csv'), random=False, keys=['video_id'])
@@ -196,7 +207,8 @@ class MainLoop(MainLoopBase):
             video_id = self.iterator_val.get_next_id()['video_id']
             video_frames = video_id_frames[video_id]
             current_embeddings = []
-            current_embeddings_softmax = []
+            current_embeddings_normalized = []
+            current_instances = []
             for video_frame in video_frames:
                 current_id = video_id + '_' + video_frame
                 dataset_entry = self.dataset_val.get({'video_id': video_id, 'frame_id': video_frame, 'unique_id': current_id})
@@ -210,18 +222,27 @@ class MainLoop(MainLoopBase):
                 run_tuple = self.sess.run((self.embeddings_1_val, self.embeddings_normalized_1_val, self.loss_val) + self.val_loss_aggregator.get_update_ops(),
                                           feed_dict=feed_dict)
                 embeddings = np.squeeze(run_tuple[0], axis=0)
-                embeddings_softmax = np.squeeze(run_tuple[1], axis=0)
+                embeddings_normalized = np.squeeze(run_tuple[1], axis=0)
 
                 current_embeddings.append(embeddings)
-                current_embeddings_softmax.append(embeddings_softmax)
+                current_embeddings_normalized.append(embeddings_normalized)
+
+                if self.create_instances:
+                    clusterer = InstanceImageCreator(coord_factors=self.clustering_coord_factors, min_label_size=self.clustering_min_label_size)
+                    clusterer.create_instance_image(embeddings_normalized)
+                    instances = clusterer.label_image.astype(np.uint16)
+                    current_instances.append(instances)
 
                 if self.invert_transformation:
                     input_sitk = datasources['tra']
                     transformation = transformations['image']
                     _ = utils.sitk_image.transform_np_output_to_sitk_input(output_image=embeddings, output_spacing=None, channel_axis=channel_axis, input_image_sitk=input_sitk, transform=transformation, interpolator=interpolator)
 
-            current_embeddings_softmax = np.stack(current_embeddings_softmax, axis=1)
-            utils.io.image.write_np(current_embeddings_softmax, os.path.join(self.output_folder, 'out/iter_' + str(self.current_iter) + '/' + video_id + '_embeddings_softmax.mha'))
+            current_embeddings_normalized = np.stack(current_embeddings_normalized, axis=1)
+            utils.io.image.write_np(current_embeddings_normalized, os.path.join(self.output_folder, 'out/iter_' + str(self.current_iter) + '/' + video_id + '_embeddings_normalized.mha'))
+            if self.create_instances:
+                current_instances = np.stack(current_instances, axis=0)
+                utils.io.image.write_np(current_instances, os.path.join(self.output_folder, 'out/iter_' + str(self.current_iter) + '/' + video_id + '_instances.mha'))
             tensorflow_train.utils.tensorflow_util.print_progress_bar(current_entry_index, num_entries, prefix='Testing ', suffix=' complete')
 
         # finalize loss values
