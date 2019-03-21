@@ -58,7 +58,7 @@ if __name__ == '__main__':
         basename_wo_ext = basename[:basename.find('.mha')]
         print(basename_wo_ext)
         image = itk.imread(filename)
-        reference = itk.imread(os.path.join(reference_folder, basename_wo_ext + '_label.nii.gz'))
+        reference = itk.imread(os.path.join(reference_folder, basename_wo_ext + '_image.nii.gz'))
         reoriented = cast(image, reference)
         reoriented = reorient_to_reference(reoriented, reference)
         reoriented = copy_information(reoriented, reference)
