@@ -23,18 +23,28 @@ class TranslateTransformBase(SpatialTransformBase):
 
         return t
 
+    def get(self, **kwargs):
+        """
+        Returns the actual sitk transfrom object with the current parameters.
+        :param kwargs: Various arguments that may be used by the transformation, e.g., 'image', 'input_size, 'landmarks', etc.
+        :return: sitk transform.
+        """
+        raise NotImplementedError
+
 
 class Fixed(TranslateTransformBase):
     """
     A translation transformation with a fixed offset.
     """
-    def __init__(self, dim, offset):
+    def __init__(self, dim, offset, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param offset: List of offsets for each dimension.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Fixed, self).__init__(dim)
+        super(Fixed, self).__init__(dim, *args, **kwargs)
         self.current_offset = offset
 
     def get(self, **kwargs):
@@ -50,13 +60,15 @@ class Random(TranslateTransformBase):
     """
     A translation transformation with a random offset.
     """
-    def __init__(self, dim, random_offset):
+    def __init__(self, dim, random_offset, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param random_offset: List of random offsets per dimension. Random offset is calculated uniformly within [-random_offset[i], random_offset[i]]
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Random, self).__init__(dim)
+        super(Random, self).__init__(dim, *args, **kwargs)
         self.random_offset = random_offset
 
     def get(self, **kwargs):
@@ -80,10 +92,10 @@ class InputCenterToOrigin(TranslateTransformBase):
         :param kwargs: Must contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
         :return: The sitk.AffineTransform().
         """
-        input_size, input_spacing = self.get_image_size_spacing(**kwargs)
+        input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
         # -1 is important, as it is always the center pixel.
-        current_offset = [(input_size[i] - 1) * input_spacing[i] * 0.5
-                          for i in range(self.dim)]
+        input_size_half = [(input_size[i] - 1) * 0.5 for i in range(self.dim)]
+        current_offset = self.index_to_physical_point(input_size_half, input_origin, input_spacing, input_direction)
         return self.get_translate_transform(self.dim, current_offset)
 
 
@@ -97,25 +109,28 @@ class OriginToInputCenter(TranslateTransformBase):
         :param kwargs: Must contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
         :return: The sitk.AffineTransform().
         """
-        input_size, input_spacing = self.get_image_size_spacing(**kwargs)
+        input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
         # -1 is important, as it is always the center pixel.
-        current_offset = [-(input_size[i] - 1) * input_spacing[i] * 0.5
-                          for i in range(self.dim)]
-        return self.get_translate_transform(self.dim, current_offset)
+        input_size_half = [(input_size[i] - 1) * 0.5 for i in range(self.dim)]
+        current_offset = self.index_to_physical_point(input_size_half, input_origin, input_spacing, input_direction)
+        current_offset = [-o for o in current_offset]
+        return self.get_translate_transform(self.dim, [-o for o in current_offset])
 
 
 class OutputCenterTransformBase(TranslateTransformBase):
     """
     A translation transformation which transforms the output image.
     """
-    def __init__(self, dim, output_size, output_spacing=None):
+    def __init__(self, dim, output_size, output_spacing=None, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param output_size: The output image size in pixels.
         :param output_spacing: The output image spacing in mm.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(OutputCenterTransformBase, self).__init__(dim)
+        super(OutputCenterTransformBase, self).__init__(dim, *args, **kwargs)
         self.output_size = output_size
         self.output_spacing = output_spacing
         if self.output_spacing is None:
@@ -129,7 +144,8 @@ class OutputCenterTransformBase(TranslateTransformBase):
         :return: List of output center coordinate for each dimension.
         """
         if not all(self.output_size):
-            input_size, input_spacing = self.get_image_size_spacing(**kwargs)
+            # TODO check, if direction or origin are needed
+            input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
         else:
             input_size, input_spacing = None, None
 
@@ -169,25 +185,28 @@ class OriginToOutputCenter(OutputCenterTransformBase):
         :return: The sitk.AffineTransform().
         """
         output_center = self.get_output_center(**kwargs)
-        return self.get_translate_transform(self.dim, [-o for o in output_center])
+        output_center = [-o for o in output_center]
+        return self.get_translate_transform(self.dim, output_center)
 
 
 class RandomFactorInput(TranslateTransformBase):
     """
     A translation transform that translates the input image by a random factor, such that it will be cropped.
     The actual translation value per dimension will be calculated as follows:
-    (input_size[i] * input_spacing[i] - remove_border[i]) * float_uniform(-self.random_factor[i], self.random_factor[i]) for each dimension.
+    (input_size[i] * input_spacing[i] - self.remove_border[i]) * float_uniform(-self.random_factor[i], self.random_factor[i]) for each dimension.
     """
-    def __init__(self, dim, random_factor, remove_border=None):
+    def __init__(self, dim, random_factor, remove_border=None, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param random_factor: List of random factors per dimension.
         :param remove_border: List of values that will be subtracted from the input size before calculating the translation value.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(RandomFactorInput, self).__init__(dim)
+        super(RandomFactorInput, self).__init__(dim, *args, **kwargs)
         self.random_factor = random_factor
-        self.remove_border = remove_border
+        self.remove_border = remove_border or [0] * self.dim
 
     def get(self, **kwargs):
         """
@@ -195,11 +214,9 @@ class RandomFactorInput(TranslateTransformBase):
         :param kwargs: Must contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
         :return: The sitk.AffineTransform().
         """
-        input_size, input_spacing = self.get_image_size_spacing(**kwargs)
-        remove_border = self.remove_border
-        if remove_border is None:
-            remove_border = [0] * self.dim
-
-        current_offset = [(input_size[i] * input_spacing[i] - remove_border[i]) * float_uniform(-self.random_factor[i], self.random_factor[i])
+        # TODO check, if direction or origin are needed
+        # TODO right now it only works when direction is np.eye and origin is np.zeros
+        input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
+        current_offset = [(input_size[i] * input_spacing[i] - self.remove_border[i]) * float_uniform(-self.random_factor[i], self.random_factor[i])
                           for i in range(len(self.random_factor))]
         return self.get_translate_transform(self.dim, current_offset)

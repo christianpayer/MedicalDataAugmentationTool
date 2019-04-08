@@ -1,9 +1,23 @@
 
-import SimpleITK as sitk
 from datasources.image_datasource import ImageDataSource
 from cachetools import LRUCache
 import re
 from threading import Lock
+
+
+class LRUCacheWithMissingFunction(LRUCache):
+    def __init__(self, maxsize, getsizeof=None, missing=None):
+        super(LRUCacheWithMissingFunction, self).__init__(maxsize, getsizeof)
+        self.missing = missing
+
+    def __missing__(self, key):
+        value = self.missing(key)
+        try:
+            self.__setitem__(key, value)
+        except ValueError:
+            pass  # value too large
+        return value
+
 
 class CachedImageDataSource(ImageDataSource):
     """
@@ -17,45 +31,24 @@ class CachedImageDataSource(ImageDataSource):
                  file_prefix='',
                  file_suffix='',
                  file_ext='.mha',
-                 id_dict_preprocessing=None,
-                 set_identity_spacing=False,
-                 set_zero_origin=True,
-                 set_identity_direction=True,
-                 round_spacing_precision=None,
-                 preprocessing=None,
-                 sitk_pixel_type=sitk.sitkInt16,
-                 return_none_if_not_found=False,
-                 cache_maxsize=8192):
+                 cache_maxsize=8192,
+                 *args, **kwargs):
         """
         Initializer.
         :param root_location: Root path, where the images will be loaded from.
         :param file_prefix: Prefix of the file path.
         :param file_suffix: Suffix of the file path.
         :param file_ext: Extension of the file path.
-        :param id_dict_preprocessing: Function that will be called for preprocessing a given id_dict.
-        :param set_identity_spacing: If true, the spacing of the sitk image will be set to 1 for every dimension.
-        :param set_zero_origin: If true, the origin of the sitk image will be set to 0 for every dimension.
-        :param set_identity_direction: If true, the direction of the sitk image will be set to 1 for every dimension.
-        :param round_spacing_precision: If > 0, spacing will be rounded to this precision (as in round(x, round_spacing_origin_direction))
-        :param preprocessing: Function that will be called for preprocessing a loaded sitk image, i.e., sitk_image = preprocessing(sitk_image)
-        :param sitk_pixel_type: sitk pixel type to which the loaded image will be converted to.
-        :param return_none_if_not_found: If true, instead of raising an exception, None will be returned, if the image at the given path could not be loaded.
         :param cache_maxsize: Max size of cache in MB.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
         super(CachedImageDataSource, self).__init__(root_location=root_location,
                                                     file_prefix=file_prefix,
                                                     file_suffix=file_suffix,
                                                     file_ext=file_ext,
-                                                    id_dict_preprocessing=id_dict_preprocessing,
-                                                    set_identity_spacing=set_identity_spacing,
-                                                    set_zero_origin=set_zero_origin,
-                                                    set_identity_direction=set_identity_direction,
-                                                    round_spacing_precision=round_spacing_precision,
-                                                    preprocessing=preprocessing,
-                                                    sitk_pixel_type=sitk_pixel_type,
-                                                    return_none_if_not_found=return_none_if_not_found)
-        self.cache = LRUCache(cache_maxsize, getsizeof=self.image_size)
-        self.cache.__missing__ = self.load_and_preprocess
+                                                    *args, **kwargs)
+        self.cache = LRUCacheWithMissingFunction(cache_maxsize, getsizeof=self.image_size, missing=self.load_and_preprocess)
         self.lock = Lock()
 
     def image_size(self, image):

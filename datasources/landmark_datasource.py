@@ -13,16 +13,17 @@ class LandmarkDataSource(DataSourceBase):
                  num_points,
                  dim,
                  silent_not_found=False,
-                 id_dict_preprocessing=None):
+                 *args, **kwargs):
         """
         Initializer.
         :param point_list_file_name: File that contains all the landmarks. Either a .csv file or a .idl file.
         :param num_points: Number of landmarks in the landmarks file.
         :param dim: Dimension of the landmarks.
         :param silent_not_found: If true, will return a list of invalid landmarks, in case of a not used key.
-        :param id_dict_preprocessing: Function that will be called for preprocessing a given id_dict.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LandmarkDataSource, self).__init__(id_dict_preprocessing=id_dict_preprocessing)
+        super(LandmarkDataSource, self).__init__(*args, **kwargs)
         self.point_list_file_name = point_list_file_name
         self.num_points = num_points
         self.dim = dim

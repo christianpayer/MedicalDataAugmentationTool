@@ -16,14 +16,14 @@ class ImageDataSource(DataSourceBase):
                  file_prefix='',
                  file_suffix='',
                  file_ext='.mha',
-                 id_dict_preprocessing=None,
                  set_identity_spacing=False,
                  set_zero_origin=True,
                  set_identity_direction=True,
                  round_spacing_precision=None,
                  preprocessing=None,
                  sitk_pixel_type=sitk.sitkInt16,
-                 return_none_if_not_found=False):
+                 return_none_if_not_found=False,
+                 *args, **kwargs):
         """
         Initializer.
         :param root_location: Root path, where the images will be loaded from.
@@ -38,8 +38,10 @@ class ImageDataSource(DataSourceBase):
         :param preprocessing: Function that will be called for preprocessing a loaded sitk image, i.e., sitk_image = preprocessing(sitk_image)
         :param sitk_pixel_type: sitk pixel type to which the loaded image will be converted to.
         :param return_none_if_not_found: If true, instead of raising an exception, None will be returned, if the image at the given path could not be loaded.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(ImageDataSource, self).__init__(id_dict_preprocessing=id_dict_preprocessing)
+        super(ImageDataSource, self).__init__(*args, **kwargs)
         self.root_location = root_location
         self.file_prefix = file_prefix
         self.file_suffix = file_suffix

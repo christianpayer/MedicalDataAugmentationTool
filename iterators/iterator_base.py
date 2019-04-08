@@ -1,5 +1,8 @@
 
-class IteratorBase(object):
+from graph.node import Node
+
+
+class IteratorBase(Node):
     """
     Iterator Base class. Used for iterating over ids.
     """
@@ -17,3 +20,10 @@ class IteratorBase(object):
         :return: The id dictionary.
         """
         raise NotImplementedError
+
+    def get(self):
+        """
+        Calls get_next_id().
+        :return: The result of get_next_id().
+        """
+        return self.get_next_id()

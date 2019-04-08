@@ -10,14 +10,18 @@ class TransformationGeneratorBase(GeneratorBase):
     """
     def __init__(self,
                  dim,
-                 pre_transformation,
-                 post_transformation):
+                 pre_transformation=None,
+                 post_transformation=None,
+                 *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param pre_transformation: A spatial transformation that will be applied before the main transformation.
         :param post_transformation: A spatial transformation that will be applied after the main transformation.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
+        super(TransformationGeneratorBase, self).__init__(*args, **kwargs)
         self.dim = dim
         self.pre_transformation = pre_transformation
         self.post_transformation = post_transformation

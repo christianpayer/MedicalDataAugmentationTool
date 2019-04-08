@@ -26,18 +26,28 @@ class FlipTransformBase(SpatialTransformBase):
 
         return t
 
+    def get(self, **kwargs):
+        """
+        Returns the actual sitk transfrom object with the current parameters.
+        :param kwargs: Various arguments that may be used by the transformation, e.g., 'image', 'input_size, 'landmarks', etc.
+        :return: sitk transform.
+        """
+        raise NotImplementedError
+
 
 class Fixed(FlipTransformBase):
     """
     A flip transformation with fixed flip axes.
     """
-    def __init__(self, dim, flip_axes):
+    def __init__(self, dim, flip_axes, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param flip_axes: List of flip indizes for each dimension.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Fixed, self).__init__(dim)
+        super(Fixed, self).__init__(dim, *args, **kwargs)
         self.current_flip_axes = flip_axes
 
     def get(self, **kwargs):
@@ -53,13 +63,15 @@ class Random(FlipTransformBase):
     """
     A flip transformation with a random probability.
     """
-    def __init__(self, dim, random_flip_axes_probs):
+    def __init__(self, dim, random_flip_axes_probs, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param random_flip_axes_probs: List of flip probabilities for each dimension.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Random, self).__init__(dim)
+        super(Random, self).__init__(dim, *args, **kwargs)
         self.random_flip_axes_probs = random_flip_axes_probs
 
     def get(self, **kwargs):

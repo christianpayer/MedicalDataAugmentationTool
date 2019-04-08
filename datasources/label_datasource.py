@@ -2,6 +2,7 @@
 import utils.io.text
 from datasources.datasource_base import DataSourceBase
 
+
 class LabelDatasource(DataSourceBase):
     """
     Datasource used for loading labels. Uses id_dict['image_id'] as the key for loading the label from a given .csv file.
@@ -12,13 +13,15 @@ class LabelDatasource(DataSourceBase):
     """
     def __init__(self,
                  label_list_file_name,
-                 id_dict_preprocessing=None):
+                 *args, **kwargs):
         """
         Initializer.
         :param label_list_file_name: The .csv file that will be loaded.
         :param id_dict_preprocessing: Function that will be called for preprocessing a given id_dict.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LabelDatasource, self).__init__(id_dict_preprocessing=id_dict_preprocessing)
+        super(LabelDatasource, self).__init__(*args, **kwargs)
         self.label_list_file_name = label_list_file_name
         self.load()
 

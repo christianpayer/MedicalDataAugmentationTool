@@ -9,14 +9,16 @@ class CenterLineAtYAxis(SpatialTransformBase):
     """
     A composite transformation that centers a given line at the y axis. Used in the bone generators.
     """
-    def __init__(self, dim, output_size, output_spacing):
+    def __init__(self, dim, output_size, output_spacing, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param output_size: The output image size in pixels.
         :param output_spacing: The output image spacing in mm.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(CenterLineAtYAxis, self).__init__(dim)
+        super(CenterLineAtYAxis, self).__init__(dim, *args, **kwargs)
         self.output_size = output_size
         self.output_spacing = output_spacing
 

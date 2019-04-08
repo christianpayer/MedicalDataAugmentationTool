@@ -18,9 +18,8 @@ class ReferenceTransformationDataset(BasicDataset):
                  data_generator_sources,
                  iterator,
                  all_generators_post_processing=None,
-                 debug_image_folder=None,
-                 debug_image_type='default',
-                 use_only_first_reference_datasource_entry=False):
+                 use_only_first_reference_datasource_entry=False,
+                 *args, **kwargs):
         """
         Initializer.
             Example:
@@ -46,6 +45,8 @@ class ReferenceTransformationDataset(BasicDataset):
         :param debug_image_folder: debug image folder for saving debug images
         :param debug_image_type: debug image output, 'default' - channels are additional dimension, 'gallery' - channels are saved in a tiled image next to each other
         :param use_only_first_reference_datasource_entry: if true, extracts the first entry of the reference datasource entry before creating the transformation
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
         super(ReferenceTransformationDataset, self).__init__(dim,
                                                              datasources,
@@ -53,8 +54,9 @@ class ReferenceTransformationDataset(BasicDataset):
                                                              data_generator_sources,
                                                              iterator,
                                                              all_generators_post_processing,
-                                                             debug_image_folder,
-                                                             debug_image_type)
+                                                             *args,
+                                                             **kwargs)
+        print('ReferenceTransformationDataset is deprecated and may be removed in later versions. Use GraphDataset instead.')
         self.reference_datasource_keys = reference_datasource_keys
         self.reference_transformation = reference_transformation
         self.use_only_first_reference_datasource_entry = use_only_first_reference_datasource_entry

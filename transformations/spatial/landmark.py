@@ -24,33 +24,41 @@ class LandmarkTransformBase(SpatialTransformBase):
 
         return t
 
+    def get(self, **kwargs):
+        """
+        Returns the actual sitk transfrom object with the current parameters.
+        :param kwargs: Various arguments that may be used by the transformation, e.g., 'image', 'input_size, 'landmarks', etc.
+        :return: sitk transform.
+        """
+        raise NotImplementedError
+
 
 class Center(LandmarkTransformBase):
     """
     A translation transform that centers the given landmarks at the origin.
     """
-    def __init__(self, dim, uniform_spacing):
+    def __init__(self, dim, physical_landmark_coordinates, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
-        :param uniform_spacing: If true, uses uniform spacing of 1 mm, otherwise, uses spacing of input image.
+        :param physical_landmark_coordinates: If true, landmark coordinates are in physical units.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LandmarkTransformBase, self).__init__(dim)
-        self.uniform_spacing = uniform_spacing
+        super(LandmarkTransformBase, self).__init__(dim, *args, **kwargs)
+        self.physical_landmark_coordinates = physical_landmark_coordinates
 
     def get(self, **kwargs):
         """
         Returns the sitk transform based on the given parameters.
         :param kwargs: Must contain 'landmarks' and uses the mean of all landmarks as the center coordinate.
-                       If uniform_spacing is False, must also contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
+                       If physical_landmark_coordinates is False, must also contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
         :return: The sitk.AffineTransform().
         """
         landmarks = kwargs.get('landmarks')
-        mean_coords = get_mean_coords(landmarks)
-        if self.uniform_spacing:
-            input_spacing = [1] * self.dim
-        else:
-            _, input_spacing = self.get_image_size_spacing(**kwargs)
+        current_offset = get_mean_coords(landmarks).tolist()
+        if not self.physical_landmark_coordinates:
+            input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
+            current_offset = self.index_to_physical_point(current_offset, input_origin, input_spacing, input_direction)
 
-        current_offset = [mean_coords[i] * input_spacing[i] for i in range(self.dim)]
         return self.get_translate_transform(self.dim, current_offset)

@@ -7,12 +7,15 @@ class LabelGenerator(GeneratorBase):
     """
     Generator that returns the label as a np array.
     """
-    def __init__(self, postprocessing=None):
+    def __init__(self, postprocessing=None, *args, **kwargs):
         """
         Initializer.
         :param postprocessing: Function that will be called on each output.
                                Takes a np array as intput and returns a np array.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
+        super(LabelGenerator, self).__init__(*args, **kwargs)
         self.postprocessing = postprocessing
 
     def get(self, label, **kwargs):

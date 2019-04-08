@@ -15,7 +15,9 @@ class IdListIterator(IteratorBase):
                  id_list_file_name,
                  random=False,
                  keys=None,
-                 postprocessing=None):
+                 postprocessing=None,
+                 whole_list_postprocessing=None,
+                 *args, **kwargs):
         """
         Initializer. Loads entries from the id_list_file_name (either .txt or .csv file). Each entry (entries) of a line of the file
         will be set to the entries of keys.
@@ -28,16 +30,21 @@ class IdListIterator(IteratorBase):
         :param keys: The keys of the resulting id dictionary.
         :param postprocessing: Postprocessing function on the id dictionary that will be called after the id
                                dictionary is generated and before it is returned, i.e., return self.postprocessing(current_dict)
+        :param whole_list_postprocessing: Postprocessing function on the loaded internal id_list id, i.e., return self.whole_list_postprocessing(self.id_list)
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
+        super(IdListIterator, self).__init__(*args, **kwargs)
         self.id_list_file_name = id_list_file_name
         self.random = random
         self.keys = keys
         if self.keys is None:
             self.keys = ['image_id']
+        self.postprocessing = postprocessing
+        self.whole_list_postprocessing = whole_list_postprocessing
         self.lock = multiprocessing.Lock()
         self.load()
         self.reset()
-        self.postprocessing = postprocessing
 
     def load(self):
         """
@@ -46,6 +53,8 @@ class IdListIterator(IteratorBase):
         ext = os.path.splitext(self.id_list_file_name)[1]
         if ext in ['.csv', '.txt']:
             self.id_list = utils.io.text.load_list_csv(self.id_list_file_name)
+        if self.whole_list_postprocessing is not None:
+            self.id_list = self.whole_list_postprocessing(self.id_list)
         print('loaded %i ids' % len(self.id_list))
 
     def reset(self):

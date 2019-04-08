@@ -15,20 +15,23 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
     def __init__(self,
                  dim,
                  output_size,
-                 landmark_indizes,
-                 landmark_flip_pairs,
-                 data_format,
-                 pre_transformation,
-                 post_transformation):
+                 output_spacing=None,
+                 landmark_indizes=None,
+                 landmark_flip_pairs=None,
+                 data_format='channels_first',
+                 *args, **kwargs):
         """
         Initializer
         :param output_size: output image size
         :param landmark_indizes: list of landmark indizes that will be used for generating the output
         :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
         :param data_format: 'channels_first' of 'channels_last'
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LandmarkGeneratorBase, self).__init__(dim=dim, pre_transformation=pre_transformation, post_transformation=post_transformation)
+        super(LandmarkGeneratorBase, self).__init__(dim=dim, *args, **kwargs)
         self.output_size = output_size
+        self.output_spacing = output_spacing or [1] * dim
         self.landmark_indizes = landmark_indizes
         self.landmark_flip_pairs = landmark_flip_pairs
         self.data_format = data_format
@@ -93,7 +96,7 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         :param transformation: transformation to perform
         :return: list of transformed landmarks
         """
-        return utils.landmark.transform.transform_landmarks_inverse(landmarks, transformation, self.output_size)
+        return utils.landmark.transform.transform_landmarks_inverse(landmarks, transformation, self.output_size, self.output_spacing)
 
     def preprocess_landmarks(self, landmarks, transformation, flip):
         """
@@ -111,23 +114,6 @@ class LandmarkGenerator(LandmarkGeneratorBase):
     Generates a numpy array of landmark coordinates. The output shape will be [num_landmarks, dim + 1].
     The first entry in the second dimension defines, whether the landmark is valid.
     """
-    def __init__(self,
-                 dim,
-                 output_size,
-                 landmark_indizes=None,
-                 landmark_flip_pairs=None,
-                 data_format='channels_first',
-                 pre_transformation=None,
-                 post_transformation=None):
-        """
-        Initializer
-        :param output_size: output image size
-        :param landmark_indizes: list of landmark indizes that will be used for generating the output
-        :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
-        :param data_format: 'channels_first' of 'channels_last'
-        """
-        super(LandmarkGenerator, self).__init__(dim, output_size, landmark_indizes, landmark_flip_pairs, data_format, pre_transformation, post_transformation)
-
     def get(self, landmarks, transformation):
         """
         Return generated heatmaps
@@ -150,24 +136,6 @@ class LandmarkGeneratorMultiple(LandmarkGeneratorBase):
     Generates a numpy array of multiple landmark coordinates. The output shape will be [num_instances, num_landmarks, dim + 1].
     The first entry in the third dimension defines, whether the landmark is valid.
     """
-
-    def __init__(self,
-                 dim,
-                 output_size,
-                 landmark_indizes=None,
-                 landmark_flip_pairs=None,
-                 data_format='channels_first',
-                 pre_transformation=None,
-                 post_transformation=None):
-        """
-        Initializer
-        :param output_size: output image size
-        :param landmark_indizes: list of landmark indizes that will be used for generating the output
-        :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
-        :param data_format: 'channels_first' of 'channels_last'
-        """
-        super(LandmarkGeneratorMultiple, self).__init__(dim, output_size, landmark_indizes, landmark_flip_pairs, data_format, pre_transformation, post_transformation)
-
     def get(self, landmarks_multiple, transformation):
         """
         Return generated heatmaps
@@ -195,26 +163,23 @@ class LandmarkGeneratorHeatmap(LandmarkGeneratorBase):
     def __init__(self,
                  dim,
                  output_size,
+                 output_spacing,
                  sigma,
                  scale_factor,
                  normalize_center,
-                 landmark_indizes=None,
-                 landmark_flip_pairs=None,
-                 data_format='channels_first',
-                 pre_transformation=None,
-                 post_transformation=None):
+                 *args, **kwargs):
         """
         Initializer
+        :param dim: Dimension
         :param output_size: output image size
         :param sigma: Gaussian sigma
         :param scale_factor: heatmap scale factor, each value of the Gaussian will be multiplied with this value
         :param normalize_center: if True, the value on the center is set to scale_factor
                                  otherwise, the default gaussian normalization factor is used
-        :param landmark_indizes: list of landmark indizes that will be used for generating the output
-        :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
-        :param data_format: 'channels_first' of 'channels_last'
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LandmarkGeneratorHeatmap, self).__init__(dim, output_size, landmark_indizes, landmark_flip_pairs, data_format, pre_transformation, post_transformation)
+        super(LandmarkGeneratorHeatmap, self).__init__(dim=dim, output_size=output_size, output_spacing=output_spacing, *args, **kwargs)
         self.output_size_np = list(reversed(self.output_size))
         self.sigma = sigma
         self.scale_factor = scale_factor
@@ -247,23 +212,19 @@ class LandmarkGeneratorMultipleHeatmap(LandmarkGeneratorBase):
                  sigma,
                  scale_factor,
                  normalize_center,
-                 landmark_indizes=None,
-                 landmark_flip_pairs=None,
-                 data_format='channels_first',
-                 pre_transformation=None,
-                 post_transformation=None):
+                 *args, **kwargs):
         """
         Initializer
+        :param dim: Dimension
         :param output_size: output image size
         :param sigma: Gaussian sigma
         :param scale_factor: heatmap scale factor, each value of the Gaussian will be multiplied with this value
         :param normalize_center: if True, the value on the center is set to scale_factor
                                  otherwise, the default gaussian normalization factor is used
-        :param landmark_indizes: list of landmark indizes that will be used for generating the output
-        :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
-        :param data_format: 'channels_first' of 'channels_last'
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LandmarkGeneratorMultipleHeatmap, self).__init__(dim, output_size, landmark_indizes, landmark_flip_pairs, data_format, pre_transformation, post_transformation)
+        super(LandmarkGeneratorMultipleHeatmap, self).__init__(dim=dim, output_size=output_size, *args, **kwargs)
         self.output_size_np = list(reversed(self.output_size))
         self.sigma = sigma
         self.scale_factor = scale_factor
@@ -300,21 +261,17 @@ class LandmarkGeneratorMask(LandmarkGeneratorBase):
                  dim,
                  output_size,
                  ones_if_every_point_is_invalid=False,
-                 landmark_indizes=None,
-                 landmark_flip_pairs=None,
-                 data_format='channels_first',
-                 pre_transformation=None,
-                 post_transformation=None):
+                 *args, **kwargs):
         """
         Initializer
+        :param dim: Dimension
         :param output_size: output image size
         :param ones_if_every_point_is_invalid: if True, create ones mask, if every point is invalid
                                                otherwise, create zeros mask, if every point is invalid
-        :param landmark_indizes: list of landmark indizes that will be used for generating the output
-        :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
-        :param data_format: 'channels_first' of 'channels_last'
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(LandmarkGeneratorMask, self).__init__(dim, output_size, landmark_indizes, landmark_flip_pairs, data_format, pre_transformation, post_transformation)
+        super(LandmarkGeneratorMask, self).__init__(dim, output_size, *args, **kwargs)
         self.output_size_np = list(reversed(self.output_size))
         self.ones_if_every_point_is_invalid = ones_if_every_point_is_invalid
 

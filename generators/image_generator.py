@@ -13,8 +13,6 @@ class ImageGenerator(TransformationGeneratorBase):
                  dim,
                  output_size,
                  output_spacing=None,
-                 pre_transformation=None,
-                 post_transformation=None,
                  post_processing_sitk=None,
                  post_processing_np=None,
                  interpolator='linear',
@@ -23,7 +21,8 @@ class ImageGenerator(TransformationGeneratorBase):
                  return_zeros_if_not_found=False,
                  data_format='channels_first',
                  np_pixel_type=np.float32,
-                 valid_output_sizes=None):
+                 valid_output_sizes=None,
+                 *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
@@ -33,8 +32,6 @@ class ImageGenerator(TransformationGeneratorBase):
                             defined, the output size will be calculated, such that resampled image fits exactly in the
                             output image.
         :param output_spacing: The resampled output spacing.
-        :param pre_transformation: A spatial transformation that will be applied before the main transformation.
-        :param post_transformation: A spatial transformation that will be applied after the main transformation.
         :param post_processing_sitk: A function that will be called after resampling the sitk image. This function
                                      must take a list of sitk images as input and return a list of sitk images.
         :param post_processing_np: A function that will be called after resampling the sitk image and converting it
@@ -52,10 +49,11 @@ class ImageGenerator(TransformationGeneratorBase):
         :param np_pixel_type: The output np pixel type.
         :param valid_output_sizes: A list of valid output sizes per dimension (a list of lists). See output_size
                                    parameter for usage.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
         super(ImageGenerator, self).__init__(dim=dim,
-                                             pre_transformation=pre_transformation,
-                                             post_transformation=post_transformation)
+                                             *args, **kwargs)
         self.output_size = output_size
         self.output_spacing = output_spacing
         if self.output_spacing is None:

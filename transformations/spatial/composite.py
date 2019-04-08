@@ -6,13 +6,15 @@ class Composite(SpatialTransformBase):
     """
     A composite transformation consisting of multiple other consecutive transformations.
     """
-    def __init__(self, dim, transformations):
+    def __init__(self, dim, transformations, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension of the transform.
         :param transformations: List of other transformations.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Composite, self).__init__(dim)
+        super(Composite, self).__init__(dim, *args, **kwargs)
         self.transformations = transformations
 
     def get(self, **kwargs):

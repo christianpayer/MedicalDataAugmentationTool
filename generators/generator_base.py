@@ -1,5 +1,8 @@
 
-class GeneratorBase(object):
+from graph.node import Node
+
+
+class GeneratorBase(Node):
     """
     Generator Base class. Used as interface for generating np arrays from datasources.
     """

@@ -37,18 +37,28 @@ class RotationTransformBase(SpatialTransformBase):
 
         return t
 
+    def get(self, **kwargs):
+        """
+        Returns the actual sitk transfrom object with the current parameters.
+        :param kwargs: Various arguments that may be used by the transformation, e.g., 'image', 'input_size, 'landmarks', etc.
+        :return: sitk transform.
+        """
+        raise NotImplementedError
+
 
 class Fixed(RotationTransformBase):
     """
     A rotation transformation with fixed angles (in radian).
     """
-    def __init__(self, dim, angles):
+    def __init__(self, dim, angles, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param angles: List of angles for each dimension or single value for 2D (in radians).
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Fixed, self).__init__(dim)
+        super(Fixed, self).__init__(dim, *args, **kwargs)
         self.current_angles = angles
 
     def get(self, **kwargs):
@@ -64,13 +74,15 @@ class Random(RotationTransformBase):
     """
     A rotation transformation with random angles (in radian).
     """
-    def __init__(self, dim, random_angles):
+    def __init__(self, dim, random_angles, *args, **kwargs):
         """
         Initializer.
         :param dim: The dimension.
         :param random_angles: List of random angles per dimension. Random angle is calculated uniformly within [-random_angles[i], random_angles[i]]
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
         """
-        super(Random, self).__init__(dim)
+        super(Random, self).__init__(dim, *args, **kwargs)
         self.random_angles = random_angles
 
     def get(self, **kwargs):

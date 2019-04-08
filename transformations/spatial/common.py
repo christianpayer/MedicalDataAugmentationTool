@@ -30,7 +30,7 @@ def flipped_dimensions(transformation, size):
     for i in range(dim):
         # set current end point and transform it
         end = [0.0] * dim
-        end[i] = size[i]
+        end[i] = size[i] or 1.0
         transformed_end = transformation.TransformPoint(end)
         # check, if transformed_start and transformed_end changed position
         flipped[i] = transformed_start[i] > transformed_end[i]

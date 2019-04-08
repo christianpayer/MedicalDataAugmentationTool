@@ -10,7 +10,17 @@ class VideoFrameListGenerator(GeneratorBase):
     def __init__(self,
                  wrapped_generator,
                  stack_axis=1,
-                 post_processing_np=None):
+                 post_processing_np=None,
+                 *args, **kwargs):
+        """
+        Initializer.
+        :param wrapped_generator: The wrapped data generator.
+        :param stack_axis: Axis where to stack the generated np arrays.
+        :param post_processing_np: Postprocessing function on the generated np arrays
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
+        """
+        super(VideoFrameListGenerator, self).__init__(*args, **kwargs)
         self.wrapped_generator = wrapped_generator
         self.stack_axis = stack_axis
         self.post_processing_np = post_processing_np
