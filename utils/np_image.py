@@ -74,27 +74,42 @@ def split_label_image(image, labels, dtype=None):
 def split_label_image_with_unknown_labels(image, dtype=None):
     if dtype is None:
         dtype = image.dtype
-    max_label = np.max(image)
     image_list = []
-    labels = []
-    for label in range(int(max_label + 1)):
+    labels = np.unique(image).tolist()
+    for label in labels:
         label_image = (image == label).astype(dtype)
-        if np.sum(label_image) > 0:
-            image_list.append(label_image)
-            labels.append(label)
+        image_list.append(label_image)
     return image_list, labels
 
 
-def merge_label_images(images, labels=None):
+def merge_label_images(images, labels=None, dtype=None):
     if labels == None:
         labels = list(range(1, len(images) + 1))
-    image = np.zeros_like(images[0])
+    image = np.zeros_like(images[0], dtype=dtype)
     for i, label in enumerate(labels):
-        image = image + images[i] * label
+        if dtype is not None:
+            image = image + images[i].astype(dtype) * label
+        else:
+            image = image + images[i] * label
     return image
 
 
+def relabel_ascending(image, dtype=None):
+    if dtype is None:
+        dtype = image.dtype
+    labels = np.unique(image).tolist()
+    relabeled = np.zeros_like(image, dtype=dtype)
+    next_free_number = 0
+    for label in labels:
+        label_image = image == label
+        relabeled[label_image] = next_free_number
+        next_free_number += 1
+    return relabeled
+
+
 def smooth_label_images(images, sigma=1, dtype=None):
+    if dtype is None:
+        dtype = images[0].dtype
     smoothed_images = [gaussian(image, sigma=sigma) for image in images]
     smoothed = np.stack(smoothed_images, 0)
     label_images = np.argmax(smoothed, axis=0)
@@ -138,8 +153,8 @@ def convex_hull(image):
     return skimage.morphology.convex_hull_image(image) > 0
 
 
-def connected_component(image, dtype=np.int64):
-    labels, num = skimage.measure.label(image, connectivity=2, return_num=True, background=0)
+def connected_component(image, dtype=np.uint8, connectivity=2):
+    labels, num = skimage.measure.label(image, connectivity=connectivity, return_num=True, background=0)
     if dtype is not np.int64:
         labels = labels.astype(dtype)
     return labels, num

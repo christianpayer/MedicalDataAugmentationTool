@@ -28,6 +28,7 @@ def resample(input_image,
              output_size,
              output_spacing=None,
              output_origin=None,
+             output_direction=None,
              interpolator=None,
              output_pixel_type=None,
              default_pixel_value=None):
@@ -42,6 +43,8 @@ def resample(input_image,
         default is same as input image
     :param output_spacing: list of float
         default is input spacing from input_image
+    :param output_direction: list of float
+        default is input direction from input_image
     :param default_pixel_value:
         default is zero
     :param output_origin: list of int
@@ -53,12 +56,10 @@ def resample(input_image,
     image_dim = input_image.GetDimension()
     transform_dim = transform.GetDimension()
     assert image_dim == transform_dim, 'image and transform dim must be equal, are ' + str(image_dim) + ' and ' + str(transform_dim)
-    if output_spacing is None:
-        output_spacing = [1] * image_dim
-    if output_origin is None:
-        output_origin = [0] * image_dim
-    if interpolator is None:
-        interpolator = 'linear'
+    output_spacing = output_spacing or [1] * image_dim
+    output_origin = output_origin or [0] * image_dim
+    output_direction = output_direction or np.eye(image_dim).flatten().tolist()
+    interpolator = interpolator or 'linear'
 
     sitk_interpolator = get_sitk_interpolator(interpolator)
 
@@ -68,6 +69,7 @@ def resample(input_image,
     resample_filter.SetInterpolator(sitk_interpolator)
     resample_filter.SetOutputSpacing(output_spacing)
     resample_filter.SetOutputOrigin(output_origin)
+    resample_filter.SetOutputDirection(output_direction)
     resample_filter.SetTransform(transform)
     if default_pixel_value is not None:
         resample_filter.SetDefaultPixelValue(default_pixel_value)
@@ -127,13 +129,8 @@ def copy_information(src, dst):
     dst.SetDirection(src_direction)
 
 
-def accumulate(images):
-    is_vector_image = images[0].GetNumberOfComponentsPerPixel() > 1
-    images_np = [utils.sitk_np.sitk_to_np(image) for image in images]
-    volume_np = np.stack(images_np)
-    volume_itk = utils.sitk_np.np_to_sitk(volume_np, is_vector=is_vector_image)
-    copy_information_additional_dim(images[0], volume_itk)
-    return volume_itk
+def accumulate(images, origin=0.0, spacing=1.0):
+    return sitk.JoinSeries(images, origin, spacing)
 
 
 def reduce_dimension(image, axis=None):
@@ -211,14 +208,28 @@ def merge_label_images(images, labels):
 
 
 def transform_np_output_to_sitk_input(output_image, output_spacing, channel_axis, input_image_sitk, transform, interpolator='linear', output_pixel_type=None):
+    input_image_size = input_image_sitk.GetSize()
+    input_image_spacing = input_image_sitk.GetSpacing()
+    input_image_origin = input_image_sitk.GetOrigin()
+    input_image_direction = input_image_sitk.GetDirection()
+
+    return transform_np_output_to_input(output_image=output_image,
+                                        output_spacing=output_spacing,
+                                        channel_axis=channel_axis,
+                                        input_image_size=input_image_size,
+                                        input_image_spacing=input_image_spacing,
+                                        input_image_origin=input_image_origin,
+                                        input_image_direction=input_image_direction,
+                                        transform=transform,
+                                        interpolator=interpolator,
+                                        output_pixel_type=output_pixel_type)
+
+
+def transform_np_output_to_input(output_image, output_spacing, channel_axis, input_image_size, input_image_spacing, input_image_origin, input_image_direction, transform, interpolator='linear', output_pixel_type=None):
     if channel_axis is not None:
         output_images = utils.np_image.split_by_axis(output_image, axis=channel_axis)
     else:
         output_images = [output_image]
-
-    input_image_size = input_image_sitk.GetSize()
-    input_image_spacing = input_image_sitk.GetSpacing()
-    input_image_origin = input_image_sitk.GetOrigin()
 
     transformed_output_images_sitk = []
     for output_image in output_images:
@@ -230,6 +241,7 @@ def transform_np_output_to_sitk_input(output_image, output_spacing, channel_axis
                                                  input_image_size,
                                                  input_image_spacing,
                                                  input_image_origin,
+                                                 input_image_direction,
                                                  interpolator,
                                                  output_pixel_type)
         transformed_output_images_sitk.append(transformed_output_image_sitk)
