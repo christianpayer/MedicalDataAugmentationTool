@@ -24,7 +24,7 @@ def load_csv(file_name, num_landmarks, dim):
             id = row[0]
             landmarks = []
             num_entries = dim * num_landmarks + 1
-            assert num_entries == len(row), 'number of row entries and landmark coordinates do not match'
+            assert num_entries == len(row), 'number of row entries ({}) and landmark coordinates ({}) do not match'.format(num_entries, len(row))
             # print(len(points_dict), name)
             for i in range(1, dim * num_landmarks + 1, dim):
                 # print(i)
@@ -106,7 +106,7 @@ def load_lml(file_name, num_landmarks, landmark_ids):
     return landmarks
 
 
-def save_points_csv(landmarks_dict, filename, id_preprocessing=None):
+def save_points_csv(landmarks_dict, filename, id_preprocessing=None, save_value=False):
     create_directories_for_file_name(filename)
     with open(filename, 'w') as csv_file:
         writer = csv.writer(csv_file)
@@ -117,6 +117,8 @@ def save_points_csv(landmarks_dict, filename, id_preprocessing=None):
             row = [current_id]
             for landmark in values:
                 row += list(landmark.coords)
+                if save_value:
+                    row += [landmark.value]
             writer.writerow(row)
 
 

@@ -4,17 +4,17 @@ import SimpleITK as sitk
 import numpy as np
 
 
-def write_nd_np(img, path):
-    write(sitk.GetImageFromArray(np.transpose(img, (1, 2, 3, 0))), path)
+def write_nd_np(img, path, compress=True):
+    write(sitk.GetImageFromArray(np.transpose(img, (1, 2, 3, 0))), path, compress)
 
-def write_np(img, path):
+def write_np(img, path, compress=True):
     if len(img.shape) == 4:
-        write(sitk.GetImageFromArray(np.transpose(img, (1, 2, 3, 0))), path)
+        write(sitk.GetImageFromArray(np.transpose(img, (1, 2, 3, 0))), path, compress)
     else:
-        write(sitk.GetImageFromArray(img), path)
+        write(sitk.GetImageFromArray(img), path, compress)
 
 
-def write(img, path):
+def write(img, path, compress=True):
     """
     Write a volume to a file path.
 
@@ -24,15 +24,23 @@ def write(img, path):
     """
     create_directories_for_file_name(path)
     writer = sitk.ImageFileWriter()
-    writer.Execute(img, path, True)
+    writer.Execute(img, path, compress)
 
 
-def write_np_rgb(img, path):
+def write_np_rgb(img, path, compress=True):
     assert(img.shape[0] == 3)
     rgb_components = [sitk.GetImageFromArray(img[i, :, :]) for i in range(img.shape[0])]
     filter = sitk.ComposeImageFilter()
     rgb = filter.Execute(rgb_components[0], rgb_components[1], rgb_components[2])
-    write(rgb, path)
+    write(rgb, path, compress)
+
+
+def write_np_rgba(img, path, compress=True):
+    assert(img.shape[0] == 4)
+    rgb_components = [sitk.GetImageFromArray(img[i, :, :]) for i in range(img.shape[0])]
+    filter = sitk.ComposeImageFilter()
+    rgb = filter.Execute(rgb_components[0], rgb_components[1], rgb_components[2], rgb_components[3])
+    write(rgb, path, compress)
 
 
 def read(path, sitk_pixel_type=sitk.sitkInt16):

@@ -72,7 +72,7 @@ def save_dict_csv(d, file_name, header=None):
     """
     Saves a dictionary as a .csv file. The key is written as the first column. If the value is a list or a tuple,
     each entry is written as a consecutive column. Otherwise, the value is written as the second column
-    :param d: The dictionary do write
+    :param d: The dictionary to write
     :param file_name: The file name.
     :param header: If given, this list will be written as a header.
     """
@@ -88,6 +88,28 @@ def save_dict_csv(d, file_name, header=None):
                 writer.writerow([key] + list(value))
             else:
                 writer.writerow([key, value])
+
+
+def save_list_csv(l, file_name, header=None, **kwargs):
+    """
+    Saves a list as a .csv file. If the list entries are a list or a tuple,
+    each entry is written as a consecutive column. Otherwise, the value is written as the second column
+    :param l: The (possibly nested) list to write
+    :param file_name: The file name.
+    :param header: If given, this list will be written as a header.
+    """
+    create_directories_for_file_name(file_name)
+    with open(file_name, 'w') as file:
+        writer = csv.writer(file, **kwargs)
+        if header is not None:
+            writer.writerow(header)
+        for value in l:
+            if isinstance(value, list):
+                writer.writerow(value)
+            elif isinstance(value, tuple):
+                writer.writerow(list(value))
+            else:
+                writer.writerow([value])
 
 
 def save_string_txt(string, file_name):
