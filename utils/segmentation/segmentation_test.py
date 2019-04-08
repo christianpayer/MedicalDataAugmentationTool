@@ -11,12 +11,23 @@ import utils.io.common
 
 
 class SegmentationTest(object):
+    """
+    Creates the predicted labels for multi label segmentation tasks.
+    """
     def __init__(self,
                  labels,
                  channel_axis,
                  interpolator='linear',
                  largest_connected_component=False,
                  all_labels_are_connected=False):
+        """
+        Initializer.
+        :param labels: The list of labels to generate. Usually something like list(range(num_labels)).
+        :param channel_axis: The channel axis of the numpy array that corresponds to the label probabilities.
+        :param interpolator: The interpolator to use for resampling the numpy predictions.
+        :param largest_connected_component: If true, filter the labels such that only the largest connected component per labels gets returned.
+        :param all_labels_are_connected: If true, filter labels such that all labels are connected.
+        """
         self.labels = labels
         self.channel_axis = channel_axis
         self.interpolator = interpolator
@@ -25,6 +36,15 @@ class SegmentationTest(object):
         self.metric_values = {}
 
     def get_transformed_image_sitk(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None):
+        """
+        Returns the transformed predictions as a list of sitk images. If the transformation is None, the prediction_np image
+        will not be transformed, but only split and converted to a list of sitk images.
+        :param prediction_np: The predicted np array.
+        :param reference_sitk: The reference sitk image from which origin/spacing/direction is taken from.
+        :param output_spacing: The output spacing of the prediction_np array.
+        :param transformation: The sitk transformation used to transform the reference_sitk image to the network input.
+        :return: A list of the transformed sitk predictions.
+        """
         if transformation is not None:
             predictions_sitk = utils.sitk_image.transform_np_output_to_sitk_input(output_image=prediction_np,
                                                                                   output_spacing=output_spacing,
@@ -39,14 +59,47 @@ class SegmentationTest(object):
         return predictions_sitk
 
     def get_prediction_labels_list(self, prediction):
+        """
+        Converts network predictions to the predicted labels.
+        :param prediction: The network predictions as np array.
+        :return: List of the predicted labels as np arrays.
+        """
         num_labels = len(self.labels)
         prediction_labels = utils.np_image.argmax(prediction, axis=0)
         return utils.np_image.split_label_image(prediction_labels, list(range(num_labels)))
 
+    def get_predictions_labels(self, predictions_list_sitk):
+        """
+        Converts a list of sitk network predictions to the sitk label image.
+        Also performs postprocessing, see postprocess_prediction_labels.
+        :param predictions_list_sitk: A list of sitk images.
+        :return: The predicted labels as an sitk image.
+        """
+        prediction = utils.sitk_np.sitk_list_to_np(predictions_list_sitk, axis=0)
+        prediction = self.postprocess_prediction_labels(prediction)
+        prediction_labels_list = self.get_prediction_labels_list(prediction)
+        prediction_labels = utils.np_image.merge_label_images(prediction_labels_list, self.labels)
+        return utils.sitk_np.np_to_sitk(prediction_labels)
+
+    def postprocess_prediction_labels(self, prediction):
+        """
+        Postprocesses np network predictions, see filter_all_labels_are_connected and filter_largest_connected_component.
+        :param prediction: The np network predictions.
+        :return: The postprocessed np network predictions.
+        """
+        if self.all_labels_are_connected:
+            self.filter_all_labels_are_connected(prediction)
+        if self.largest_connected_component:
+            self.filter_largest_connected_component(prediction)
+        return prediction
+
     def filter_largest_connected_component(self, prediction):
-        prediction_filtered = prediction.copy()
+        """
+        Filters the predictions such that only the largest connected component per label remains.
+        :param prediction: The np network predictions.
+        """
         while True:
-            prediction_labels_list = self.get_prediction_labels_list(prediction_filtered)
+            prediction_labels_list = self.get_prediction_labels_list(prediction)
             prediction_labels = np.stack(prediction_labels_list, axis=0)
             prediction_labels_largest_cc_list = [utils.np_image.largest_connected_component(prediction_labels)
                                                  for prediction_labels in prediction_labels_list[1:]]
@@ -56,10 +109,13 @@ class SegmentationTest(object):
             # break if no pixels would be filtered
             if not np.any(prediction_filter):
                 break
-            prediction_filtered[prediction_filter] = -np.inf
-        return prediction_filtered
+            prediction[prediction_filter] = -np.inf
 
     def filter_all_labels_are_connected(self, prediction):
+        """
+        Filters the predictions such that all predicted labels are connected.
+        :param prediction: The np network predictions.
+        """
         # split into background and other labels
         prediction_background, prediction_others = np.split(prediction, [1], axis=0)
         # remove unused dimension in background
@@ -69,32 +125,28 @@ class SegmentationTest(object):
         # stack background and merged labels
         prediction_background_others = np.stack([prediction_background, prediction_others], axis=0)
         # find arg max -> either background or other labels
-        all_labels_prediction = np.argmax(prediction_background_others, axis=0)
+        all_labels_prediction = utils.np_image.argmax(prediction_background_others, axis=0)
         # get largest component of other labels
         all_labels_prediction = utils.np_image.largest_connected_component(all_labels_prediction)
         # filter is the largest component
         prediction_filter = np.stack([all_labels_prediction] * prediction.shape[0], axis=0) == 0
-        prediction_filtered = prediction.copy()
-        prediction_filtered[prediction_filter] = -np.inf
-        return prediction_filtered
+        prediction[prediction_filter] = -np.inf
 
     def get_label_image(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None, return_transformed_sitk=False):
+        """
+        Returns the label image as an sitk image. Performs resampling and postprocessing.
+        :param prediction_np: The np network predictions.
+        :param reference_sitk: The reference sitk image from which origin/spacing/direction is taken from.
+        :param output_spacing: The output spacing of the prediction_np array.
+        :param transformation: The sitk transformation used to transform the reference_sitk image to the network input.
+        :param return_transformed_sitk: If true, also return the transformed predictions as sitk images.
+        :return: The predicted labels as an sitk image.
+        """
         assert len(self.labels) == prediction_np.shape[self.channel_axis], 'number of labels must be equal to prediction image channel axis'
         prediction_transformed_sitk = self.get_transformed_image_sitk(prediction_np, reference_sitk, output_spacing, transformation)
-        prediction_transformed = utils.sitk_np.sitk_list_to_np(prediction_transformed_sitk, axis=0)
-
-        if self.all_labels_are_connected:
-            prediction_transformed = self.filter_all_labels_are_connected(prediction_transformed)
-        if self.largest_connected_component:
-            prediction_transformed = self.filter_largest_connected_component(prediction_transformed)
-
-        prediction_labels_list = self.get_prediction_labels_list(prediction_transformed)
-
-        prediction_labels = utils.np_image.merge_label_images(prediction_labels_list, self.labels)
-        prediction_labels_sitk = utils.sitk_np.np_to_sitk(prediction_labels)
+        prediction_labels_sitk = self.get_predictions_labels(prediction_transformed_sitk)
         if reference_sitk is not None:
             prediction_labels_sitk.CopyInformation(reference_sitk)
-
         if return_transformed_sitk:
             return prediction_labels_sitk, prediction_transformed_sitk
         else:
