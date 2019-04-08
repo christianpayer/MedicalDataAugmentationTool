@@ -4,6 +4,16 @@ import numpy as np
 
 
 def generate_heatmap_target(heatmap_size, landmarks, sigmas, scale=1.0, normalize=False, data_format='channels_first'):
+    """
+    Generates heatmap images for the given parameters.
+    :param heatmap_size: The image size of a single heatmap.
+    :param landmarks: The list of landmarks. For each landmark, a heatmap on the given coordinate will be generated. If landmark.is_valid is False, then the heatmap will be empty.
+    :param sigmas: The sigmas for the individual heatmaps. May be either fixed, or trainable.
+    :param scale: The scale factor for each heatmap. Each pixel value will be multiplied by this value.
+    :param normalize: If true, each heatmap value will be multiplied by the normalization factor of the gaussian.
+    :param data_format: The data format of the resulting tensor of heatmap images.
+    :return: The tensor of heatmap images.
+    """
     landmarks_shape = landmarks.get_shape().as_list()
     sigmas_shape = sigmas.get_shape().as_list()
     batch_size = landmarks_shape[0]
