@@ -27,7 +27,7 @@ class MainLoop(MainLoopBase):
         self.network_id = network_id
         self.output_folder = '{}_cv{}'.format(network_id, cv) + '/' + self.output_folder_timestamp()
         self.batch_size = 8
-        self.learning_rate = 0.0000001
+        self.learning_rate = 0.0000001  # TODO adapt learning rates for different networks for faster training
         self.max_iter = 20000
         self.test_iter = 5000
         self.disp_iter = 100

@@ -106,6 +106,7 @@ class Dataset(object):
             heatmap_post_transformation = scale.Fixed(self.dim, self.downsampling_factor)
         landmark_generator = LandmarkGeneratorHeatmap(self.dim,
                                                       self.heatmap_size,
+                                                      [1] * self.dim,
                                                       self.sigma,
                                                       scale_factor=1.0,
                                                       normalize_center=True,
