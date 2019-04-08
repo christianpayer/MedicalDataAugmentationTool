@@ -117,10 +117,11 @@ class SummaryHandler(object):
         append_write = 'a' if os.path.exists(self.csv_filename) else 'w'
         with open(self.csv_filename, append_write) as csv_file:
             writer = csv.writer(csv_file)
-            row = [str(current_iteration), str(self.time_since_last_finalize.seconds)]
-            for value in summary_values.values():
-                row.append(value)
-            writer.writerow(row)
+            if current_iteration == 0:
+                row = ['iter', 'time'] + list(summary_values.keys())
+                writer.writerow(row)
+            row = [current_iteration, self.time_since_last_finalize.seconds] + list(summary_values.values())
+            writer.writerow(list(map(str, row)))
 
     def update_internal_times(self):
         """
@@ -135,6 +136,7 @@ class SummaryHandler(object):
         Finalizes the summary fo the current iteration. Writes summary, .csv file, and prints a short summary string. Additionally resets the internal times and the losses' running mean.
         :param current_iteration: The current iteration.
         :param summary_values: Additional summary values as a dict. If self.summary_placeholders_dict has additional values that are not in self.loss_dict, these values must be given.
+        :return: Dictionary of all current summary and loss values.
         """
         if summary_values is None:
             summary_values = OrderedDict()
@@ -148,3 +150,5 @@ class SummaryHandler(object):
         self.print_current_summary(current_iteration, summary_values)
 
         self.reset_current_losses()
+
+        return summary_values
