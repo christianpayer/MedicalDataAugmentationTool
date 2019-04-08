@@ -1,11 +1,13 @@
 
 import os
 import tensorflow as tf
+import numpy as np
 import sys
 from tensorflow_train.utils.summary_handler import SummaryHandler, create_summary_placeholder
 from utils.io.common import create_directories, copy_files_to_folder
 import datetime
 from collections import OrderedDict
+from glob import glob
 
 class MainLoopBase(object):
     def __init__(self):
@@ -33,8 +35,10 @@ class MainLoopBase(object):
         self.is_closed = False
         self.output_folder = ''
         self.load_model_filename = None
-        self.files_to_copy = None
+        self.files_to_copy = ['*.py']
         self.additional_summaries_placeholders_val = None
+        self.raise_on_nan_loss = True
+        self.loss_name_for_nan_loss_check = 'loss'
 
     def init_saver(self):
         # initialize variables
@@ -90,7 +94,10 @@ class MainLoopBase(object):
     def create_output_folder(self):
         create_directories(self.output_folder)
         if self.files_to_copy is not None:
-            copy_files_to_folder(self.files_to_copy, self.output_folder)
+            all_files_to_copy = []
+            for file_to_copy in self.files_to_copy:
+                all_files_to_copy += glob(file_to_copy)
+            copy_files_to_folder(all_files_to_copy, self.output_folder)
 
     def output_folder_timestamp(self):
         return datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -146,7 +153,11 @@ class MainLoopBase(object):
 
         # display loss and save summary
         if self.train_loss_aggregator is not None and (self.current_iter % self.disp_iter) == 0:
-            self.train_loss_aggregator.finalize(self.current_iter)
+            summary_values = self.train_loss_aggregator.finalize(self.current_iter)
+            # check if current loss is nan and if training should be stopped
+            if self.raise_on_nan_loss and self.loss_name_for_nan_loss_check in summary_values:
+                if np.isnan(summary_values[self.loss_name_for_nan_loss_check]):
+                    raise RuntimeError('\'{}\' is nan'.format(self.loss_name_for_nan_loss_check))
         # save layer_weight_summary
         if self.layer_weight_inspector is not None and (self.current_iter % self.layer_weight_summary_iter) == 0:
             summary = results[1]  # TODO: make more flexible, currently summary is always entry 1
@@ -166,6 +177,8 @@ class MainLoopBase(object):
             print('Learning rate:', self.learning_rate)
         if self.max_iter is not None:
             print('Max iterations:', self.max_iter)
+        if self.output_folder is not None:
+            print('Output folder:', self.output_folder)
 
     def run(self):
         self.init_all()
@@ -201,7 +214,7 @@ class MainLoopBase(object):
 
     def initLossAggregators(self):
         if self.train_losses is not None and self.val_losses is not None:
-            assert set(self.train_losses.keys()) == set(self.val_losses.keys()), 'train and val loss keys are not equal'
+            assert set(self.train_losses.keys()) == set(self.val_losses.keys()), 'train and val loss keys are not equal, ' + ', '.join(map(str, self.train_losses.keys())) + ' and ' + ', '.join(map(str, self.val_losses.keys()))
 
         if self.train_losses is None:
             return
