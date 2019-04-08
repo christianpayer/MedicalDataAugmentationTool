@@ -7,6 +7,20 @@ If you have problems or find any bugs, don't hesitate to send me a message.
 ## Citation
 If you use this code for your research, please cite any of our papers.
 
+[Integrating spatial configuration into heatmap regression based CNNs for landmark localization](https://doi.org/10.1016/j.media.2019.03.007)
+```
+@article{Payer2019,
+  title   = {Integrating spatial configuration into heatmap regression based {CNNs} for landmark localization},
+  author  = {Payer, Christian and {\v{S}}tern, Darko and Bischof, Horst and Urschler, Martin},
+  journal = {Medical Image Analysis},
+  volume  = {54},
+  year    = {2019},
+  month   = {may},
+  pages   = {207--219},
+  doi     = {10.1016/j.media.2019.03.007},
+}
+```
+
 [Instance Segmentation and Tracking with Cosine Embeddings and Recurrent Hourglass Networks](https://doi.org/10.1007/978-3-030-00934-2_1):
 
 ```
