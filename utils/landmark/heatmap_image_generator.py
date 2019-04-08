@@ -19,7 +19,6 @@ class HeatmapImageGenerator(object):
                  scale_factor,
                  normalize_center=True,
                  size_sigma_factor=10):
-
         self.image_size = image_size
         self.sigma = sigma
         self.scale_factor = scale_factor
@@ -31,7 +30,8 @@ class HeatmapImageGenerator(object):
         """
         Generates a numpy array of the landmark image for the specified point and parameters.
         :param coords: numpy coordinates ([x], [x, y] or [x, y, z]) of the point.
-        :return: numpy array of the landmark image. TODO: check and discribe indizes
+        :param sigma_scale_factor: Every value of the gaussian is multiplied by this value.
+        :return: numpy array of the landmark image.
         """
         # landmark holds the image
         heatmap = np.zeros(self.image_size, dtype=np.float32)
@@ -97,10 +97,11 @@ class HeatmapImageGenerator(object):
     def generate_heatmaps(self, landmarks, stack_axis):
         """
         Generates a numpy array landmark images for the specified points and parameters.
-        :param points: List of points. A point is a dictionary with the following entries:
+        :param landmarks: List of points. A point is a dictionary with the following entries:
             'is_valid': bool, determines whether the coordinate is valid or not
             'coords': numpy coordinates ([x], [x, y] or [x, y, z]) of the point.
-            'scale': scale factor of the point
+            'scale': scale factor of the point.
+        :param stack_axis: The axis where to stack the np arrays.
         :return: numpy array of the landmark images.
         """
         heatmap_list = []

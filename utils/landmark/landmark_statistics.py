@@ -97,8 +97,8 @@ class LandmarkStatistics(object):
         :return: The image point errors.
         """
         ipe = {}
-        for id, distances in self.distances.items():
-            ipe[id] = np.nansum(np.array(list(distances))) / len(distances)
+        for image_id, distances in self.distances.items():
+            ipe[image_id] = np.nansum(np.array(list(distances))) / len(distances)
         return ipe
 
     def get_pe_statistics(self):
@@ -151,14 +151,40 @@ class LandmarkStatistics(object):
             for groundtruth_landmark, predicted_landmark in zip(groundtruth_landmarks, predicted_landmarks):
                 if not groundtruth_landmark.is_valid or not predicted_landmark.is_valid:
                     continue
-                all_landmark_distances = [(other, self.get_distance(predicted_landmark, other, spacing, 1.0)) for other in groundtruth_landmarks if other.is_valid]
-                if len(all_landmark_distances) == 0:
+                all_gt_landmarks_and_distances = [(other_gt_landmark, self.get_distance(predicted_landmark, other_gt_landmark, spacing, 1.0))
+                                                  for other_gt_landmark in groundtruth_landmarks if other_gt_landmark.is_valid]
+                if len(all_gt_landmarks_and_distances) == 0:
                     continue
-                closest_landmark_distance = min(all_landmark_distances, key=lambda landmark_distance: landmark_distance[1])
+                closest_gt_landmark, closest_gt_distance = min(all_gt_landmarks_and_distances, key=lambda landmark_distance: landmark_distance[1])
                 # closest landmark is the groundtruth landmark and the distance is within max_distance
-                if closest_landmark_distance[0] == groundtruth_landmark and closest_landmark_distance[1] <= max_distance:
+                if closest_gt_landmark == groundtruth_landmark and closest_gt_distance <= max_distance:
                     correct += 1
         return correct
+
+    # def get_correct_id(self, max_distance):
+    #     """
+    #     Calculates the number of correctly identified landmarks (defined in spine localization dataset).
+    #     A predicted landmark is correct, if the closest landmark is the correct groundtruth landmark and the distance is within max_distance
+    #     :param max_distance: max distance that a landmark can be correct
+    #     :return: # correct
+    #     """
+    #     correct = 0
+    #     for key in self.groundtruth_landmarks.keys():
+    #         groundtruth_landmarks = self.groundtruth_landmarks[key]
+    #         predicted_landmarks = self.predicted_landmarks[key]
+    #         spacing = self.spacings[key]
+    #         for groundtruth_landmark, predicted_landmark in zip(groundtruth_landmarks, predicted_landmarks):
+    #             if not groundtruth_landmark.is_valid or not predicted_landmark.is_valid:
+    #                 continue
+    #             all_pred_landmarks_and_distances = [(other_pred_landmark, self.get_distance(predicted_landmark, other_pred_landmark, spacing, 1.0))
+    #                                                 for other_pred_landmark in predicted_landmarks if other_pred_landmark.is_valid]
+    #             if len(all_pred_landmarks_and_distances) == 0:
+    #                 continue
+    #             closest_pred_landmark, closest_pred_distance = min(all_pred_landmarks_and_distances, key=lambda landmark_distance: landmark_distance[1])
+    #             # closest landmark is the groundtruth landmark and the distance is within max_distance
+    #             if closest_pred_landmark == predicted_landmark and closest_pred_distance <= max_distance:
+    #                 correct += 1
+    #     return correct
 
     def get_num_valid_distances(self):
         """

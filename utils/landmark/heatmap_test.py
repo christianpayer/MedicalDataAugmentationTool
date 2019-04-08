@@ -70,6 +70,7 @@ class HeatmapTest(object):
         :param transformation: The transformation. If transformation is None, the prediction np array will not be transformed.
         :return: A Landmark object.
         """
+        output_spacing = output_spacing or [1] * image.ndim
         if transformation is not None:
             if self.invert_transformation:
                 # transform prediction back to input image resolution, if specified.
@@ -77,10 +78,13 @@ class HeatmapTest(object):
                 transformed_np = utils.sitk_np.sitk_to_np_no_copy(transformed_sitk[0])
                 value, coord = utils.np_image.find_maximum_in_image(transformed_np)
                 coord = np.flip(coord, axis=0)
+                coord = coord.astype(np.float32)
+                coord *= np.array(reference_sitk.GetSpacing())
             else:
                 # search for subpixel accurate maximum in image
                 value, coord = utils.np_image.find_quadratic_subpixel_maximum_in_image(image)
                 coord = np.flip(coord, axis=0)
+                coord *= output_spacing
                 coord = utils.landmark.transform.transform_coords(coord, transformation)
         else:
             # just take maximum of image
@@ -88,4 +92,3 @@ class HeatmapTest(object):
             coord = np.flip(coord, axis=0)
 
         return Landmark(coords=coord, is_valid=True, scale=1, value=value)
-
