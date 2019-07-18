@@ -47,7 +47,10 @@ def transform_landmarks_inverse(landmarks, transformation, size, spacing):
                 transformed_landmark.coords /= np.array(spacing)
         return transformed_landmarks
     except:
-        return transform_landmarks_inverse_with_resampling(landmarks, transformation, size, spacing, 10.0)
+        # consider a distance of 2 pixels as a maximum allowed distance
+        # for calculating the inverse with a transformation field
+        max_min_distance = np.max(spacing) * 2
+        return transform_landmarks_inverse_with_resampling(landmarks, transformation, size, spacing, max_min_distance)
 
 
 def transform_landmarks(landmarks, transformation):
