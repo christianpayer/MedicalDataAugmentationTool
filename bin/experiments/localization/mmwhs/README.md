@@ -1,7 +1,7 @@
 # Multi-label Whole Heart Segmentation Using CNNs and Anatomical Label Configurations
 
 ## Usage
-This example implements the segmentation network of the paper [Multi-label Whole Heart Segmentation Using CNNs and Anatomical Label Configurations](https://doi.org/10.1007/978-3-319-75541-0_20). The results when running the scripts may not be competely the same, as we originally trained the network with caffe and not with tensorflow. See the localization folder for examples of how to train networks for localization.
+This example implements the localization network of the paper [Multi-label Whole Heart Segmentation Using CNNs and Anatomical Label Configurations](https://doi.org/10.1007/978-3-319-75541-0_20). The results when running the scripts may not be competely the same, as we originally trained the network with caffe and not with tensorflow. See the segmentation folder for examples of how to train networks for segmentation.
 If you have problems/questions/suggestions about the code, write me a [mail](mailto:christian.payer@gmx.net)!
 
 ### Dataset preprocessing
