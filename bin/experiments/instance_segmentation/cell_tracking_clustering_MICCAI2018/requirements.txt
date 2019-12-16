@@ -1,4 +1,4 @@
-tensorflow==1.4.1
+tensorflow==1.15.0
 numpy==1.14.0
 SimpleITK==1.0.1
 scikit-image==0.13.1
