@@ -29,7 +29,7 @@ def transform_landmark(landmark, transformation):
     return transformed_landmark
 
 
-def transform_landmarks_inverse(landmarks, transformation, size, spacing):
+def transform_landmarks_inverse(landmarks, transformation, size, spacing, max_min_distance=None):
     """
     Transforms a landmark object with the inverse of a given sitk transformation. If the transformation
     is not invertible, calculates the inverse by resampling from a dispacement field.
@@ -37,6 +37,8 @@ def transform_landmarks_inverse(landmarks, transformation, size, spacing):
     :param transformation: The sitk transformation.
     :param size: The size of the output image, on which the landmark should exist.
     :param spacing: The spacing of the output image, on which the landmark should exist.
+    :param max_min_distance: The maximum distance of the coordinate calculated by resampling. If the calculated distance is larger than this value, the landmark will be set to being invalid.
+                             If this parameter is None, np.max(spacing) * 2 will be used.
     :return: The landmark object with transformed coords.
     """
     try:
@@ -49,7 +51,7 @@ def transform_landmarks_inverse(landmarks, transformation, size, spacing):
     except:
         # consider a distance of 2 pixels as a maximum allowed distance
         # for calculating the inverse with a transformation field
-        max_min_distance = np.max(spacing) * 2
+        max_min_distance = max_min_distance or np.max(spacing) * 2
         return transform_landmarks_inverse_with_resampling(landmarks, transformation, size, spacing, max_min_distance)
 
 
@@ -93,7 +95,6 @@ def transform_landmarks_inverse_with_resampling(landmarks, transformation, size,
             coords = transformed_landmarks[i].coords
             # calculate distances to current landmark coordinates
             vec = displacement_field - coords
-            #distances = np.sqrt(vec[:, :, 0] ** 2 + vec[:, :, 1] ** 2)
             distances = np.linalg.norm(vec, axis=2)
             invert_min_distance, transformed_coords = utils.np_image.find_quadratic_subpixel_maximum_in_image(-distances)
             min_distance = -invert_min_distance

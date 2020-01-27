@@ -19,6 +19,7 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
                  landmark_indizes=None,
                  landmark_flip_pairs=None,
                  data_format='channels_first',
+                 min_max_transformation_distance=None,
                  *args, **kwargs):
         """
         Initializer
@@ -26,6 +27,8 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         :param landmark_indizes: list of landmark indizes that will be used for generating the output
         :param landmark_flip_pairs: list of landmark index tuples that will be flipped, if the transformation is flipped
         :param data_format: 'channels_first' of 'channels_last'
+        :param max_min_distance: The maximum distance of the coordinate calculated by resampling. If the calculated distance is larger than this value, the landmark will be set to being invalid.
+                                 If this parameter is None, np.max(spacing) * 2 will be used.
         :param args: Arguments passed to super init.
         :param kwargs: Keyword arguments passed to super init.
         """
@@ -35,6 +38,7 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         self.landmark_indizes = landmark_indizes
         self.landmark_flip_pairs = landmark_flip_pairs
         self.data_format = data_format
+        self.min_max_transformation_distance = min_max_transformation_distance
         if data_format == 'channels_first':
             self.stack_axis = 0
         elif data_format == 'channels_last':
@@ -51,6 +55,23 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         flipped = transformations.spatial.common.flipped_dimensions(transformation, self.output_size)
         is_flipped = functools.reduce(lambda a, b: a ^ b, flipped, 0)
         return is_flipped
+
+    def is_valid_and_within_size(self, landmark):
+        """
+        Returns True, if landmark is valid, and all coordinates are within [0] * self.dim and self.output_size.
+        Only dimensions where output_size is not None are evaluated.
+        :param landmark: The landmark to test.
+        :return: True, if all conditions hold.
+        """
+        if not landmark.is_valid:
+            return False
+        if not np.all(landmark.coords >= 0):
+            return False
+        if self.output_size is not None:
+            for i in range(self.dim):
+                if self.output_size[i] is not None and landmark.coords[i] >= self.output_size[i]:
+                    return False
+        return True
 
     def flip_landmarks(self, landmarks, flip):
         """
@@ -96,7 +117,7 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         :param transformation: transformation to perform
         :return: list of transformed landmarks
         """
-        return utils.landmark.transform.transform_landmarks_inverse(landmarks, transformation, self.output_size, self.output_spacing)
+        return utils.landmark.transform.transform_landmarks_inverse(landmarks, transformation, self.output_size, self.output_spacing, self.min_max_transformation_distance)
 
     def preprocess_landmarks(self, landmarks, transformation, flip):
         """
@@ -116,7 +137,9 @@ class LandmarkGenerator(LandmarkGeneratorBase):
     """
     def get(self, landmarks, transformation):
         """
-        Return generated heatmaps
+        Return generated landmarks. The resulting np array has the shape [num_landmarks, dim + 1], where the first
+        dimension is the index of the landmark. The second dimension has 1 as first entry, if the landmark is valid and 0 otherwise.
+        The subsequent entries are the preprocessed coordinates in reversed order, e.g., [is_valid, z, y, x] for 3D and [is_valid, y, x] for 2D.
         :param landmarks: list of landmarks
         :param transformation: transformation to transform landmarks
         :return: landmarks with shape [num_landmarks, dim + 1]
@@ -125,7 +148,7 @@ class LandmarkGenerator(LandmarkGeneratorBase):
         preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, flip)
         output = np.zeros((len(preprocessed_landmarks), self.dim + 1), dtype=np.float32)
         for i, preprocessed_landmark in enumerate(preprocessed_landmarks):
-            if preprocessed_landmark.is_valid and np.all(preprocessed_landmark.coords >= 0) and np.all(preprocessed_landmark.coords < self.output_size):
+            if self.is_valid_and_within_size(preprocessed_landmark):
                 output[i, :] = [1] + list(reversed(preprocessed_landmark.coords.tolist()))
 
         return output
