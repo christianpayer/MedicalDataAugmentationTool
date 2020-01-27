@@ -123,16 +123,20 @@ class LandmarkStatistics(object):
         median = np.nanmedian(ipe)
         return mean, stdev, median
 
-    def get_num_outliers(self, radii):
+    def get_num_outliers(self, radii, normalize=False):
         """
         Returns number of point error outliers for given radii.
         :param radii: List of radii.
+        :param normalize: If true, divide number of outliers with the total number of points.
         :return: List of number of outliers for the given radii.
         """
         pe = np.array(list(self.distances.values()))
         radii_outliers = []
         for r in radii:
             num_outliers = np.count_nonzero(pe >= r)
+            if normalize:
+                num_valid_distances, _ = self.get_num_valid_distances()
+                num_outliers /= num_valid_distances
             radii_outliers.append(num_outliers)
         return radii_outliers
 
