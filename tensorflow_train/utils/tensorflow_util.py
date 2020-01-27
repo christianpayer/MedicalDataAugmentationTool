@@ -111,3 +111,26 @@ def bit_tensor(input, bit_index):
     assert input.dtype in [tf.int8, tf.int16, tf.int32, tf.int64, tf.uint8, tf.uint16, tf.uint32, tf.uint64], 'unsupported data type, must be *int*'
     current_bit = tf.bitwise.left_shift(tf.constant(1, dtype=input.dtype), tf.cast(bit_index, dtype=input.dtype))
     return tf.greater(tf.bitwise.bitwise_and(input, current_bit), 0)
+
+
+def get_reg_loss(reg_constant, collect_kernel_variables=False):
+    """
+    Returns the regularization loss for the regularized variables, multiplied with reg_constant.
+    :param reg_constant: The multiplication factor.
+    :param collect_kernel_variables: If true, uses all variables that contain the string 'kernel', otherwise uses tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES).
+    :return: The regularization loss.
+    """
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        if reg_constant > 0:
+            if collect_kernel_variables:
+                reg_losses = []
+                for tf_var in tf.trainable_variables():
+                    if 'kernel' in tf_var.name:
+                        reg_losses.append(tf.nn.l2_loss(tf_var))
+            else:
+                reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss_reg = reg_constant * tf.add_n(reg_losses)
+        else:
+            loss_reg = 0
+    return loss_reg
