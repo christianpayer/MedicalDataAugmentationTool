@@ -114,7 +114,7 @@ class OriginToInputCenter(TranslateTransformBase):
         input_size_half = [(input_size[i] - 1) * 0.5 for i in range(self.dim)]
         current_offset = self.index_to_physical_point(input_size_half, input_origin, input_spacing, input_direction)
         current_offset = [-o for o in current_offset]
-        return self.get_translate_transform(self.dim, [-o for o in current_offset])
+        return self.get_translate_transform(self.dim, current_offset)
 
 
 class OutputCenterTransformBase(TranslateTransformBase):
