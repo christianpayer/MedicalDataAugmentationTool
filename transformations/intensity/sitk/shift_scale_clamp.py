@@ -117,8 +117,14 @@ class ShiftScaleClamp(object):
     def __call__(self, input_image):
         """
         Transforms an image by first shifting and scaling, and then optionally clamps the values.
-        :param input_image: The sitk image.
-        :return: The transformed sitk image.
+        Order of operations:
+            image += shift
+            image *= scale
+            image += random.float_uniform(-random_shift, random_shift)
+            image *= 1 + random.float_uniform(-random_scale, random_scale)
+            image = np.clip(image, clamp_min, clamp_max)
+        :param input_image: np input image
+        :return: np processed image
         """
         return shift_scale_clamp(input_image,
                                  shift=self.shift,

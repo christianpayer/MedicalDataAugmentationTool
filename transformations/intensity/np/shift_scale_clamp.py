@@ -61,6 +61,15 @@ class ShiftScaleClamp(object):
                  clamp_max=None,
                  random_shift=None,
                  random_scale=None):
+        """
+        Initializer.
+        :param shift: The intensity shift (added) value (image += shift).
+        :param scale: The intensity scale (multiplied) value (image *= scale).
+        :param clamp_min: The minimum value to clamp (image = np.clip(image, clamp_min, clamp_max)).
+        :param clamp_max: The maximum value to clamp (image = np.clip(image, clamp_min, clamp_max)).
+        :param random_shift: The random shift (image += random.float_uniform(-random_shift, random_shift)).
+        :param random_scale: The additional random scale (image *= 1 + random.float_uniform(-random_scale, random_scale)).
+        """
         self.shift = shift
         self.scale = scale
         self.clamp_min = clamp_min
@@ -80,4 +89,10 @@ class ShiftScaleClamp(object):
         :param input_image: np input image
         :return: np processed image
         """
-        return shift_scale_clamp(input_image, self.shift, self.scale, self.clamp_min, self.clamp_max, self.random_shift, self.random_scale)
+        return shift_scale_clamp(input_image,
+                                 shift=self.shift,
+                                 scale=self.scale,
+                                 clamp_min=self.clamp_min,
+                                 clamp_max=self.clamp_max,
+                                 random_shift=self.random_shift,
+                                 random_scale=self.random_scale)
