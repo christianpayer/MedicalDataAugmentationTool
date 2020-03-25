@@ -208,6 +208,13 @@ def draw_circle(image, center_rc, radius, value=1):
     return image
 
 
+def draw_sphere(image, center, radius, value=1):
+    z, y, x = np.meshgrid(range(image.shape[0]), range(image.shape[1]), range(image.shape[2]), indexing='ij')
+    d = np.sqrt((z - center[0]) ** 2 + (y - center[1]) ** 2 + (x - center[2]) ** 2)
+    image[d <= radius] = value
+    return image
+
+
 def distance_transform(image):
     return scipy.ndimage.morphology.distance_transform_edt(image)
 

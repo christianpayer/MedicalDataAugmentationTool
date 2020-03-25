@@ -15,16 +15,28 @@ class HeatmapTest(object):
     def __init__(self,
                  channel_axis,
                  invert_transformation,
-                 interpolator='linear'):
+                 interpolator='linear',
+                 return_multiple_maxima=False,
+                 min_max_value=None,
+                 multiple_min_max_value_factor=None,
+                 min_max_distance=None):
         """
         Initializer.
         :param channel_axis: The channel axis of the heatmaps of the given numpy arrays.
         :param invert_transformation: If True, invert transformations. Usually, False should be faster and more similarly accurate.
         :param interpolator: The used sitk interpolator that will be used, if invert_transformation is True.
+        :param return_multiple_maxima: If True, return multiple non local maxima as landmark coordinates. Else, return only the maximum coordinate.
+        :param min_max_value: The minimal value that is considered as a local maximum.
+        :param multiple_min_max_value_factor: multiple_min_max_value_factor multiplied with the overall maximum value of the heatmap is considered as the threshold for local maxima.
+        :param min_max_distance: min_max_distance (in pixels) is the minimal distance of two local maxima.
         """
         self.channel_axis = channel_axis
         self.invert_transformation = invert_transformation
         self.interpolator = interpolator
+        self.return_multiple_maxima = return_multiple_maxima
+        self.min_max_value = min_max_value
+        self.multiple_min_max_value_factor = multiple_min_max_value_factor
+        self.min_max_distance = min_max_distance
 
     def get_transformed_image_sitk(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None):
         """
@@ -60,6 +72,28 @@ class HeatmapTest(object):
         """
         return [self.get_landmark(image, transformation, reference_sitk, output_spacing) for image in np.rollaxis(prediction_np, self.channel_axis)]
 
+    def get_multiple_maximum_coordinates(self, image):
+        """
+        Return local maxima of the image. At least one local maximum is returned.
+        If the local maximum value absolute_max_value > self.min_max_value, also return other local maxima that are at least self.min_max_distance apart, while
+        having a value > absolute_max_value * self.multiple_min_max_value_factor.
+        :param image: Heatmap image.
+        :return: List of value, coord tuples of local maxima.
+        """
+        value_coord_pairs = []
+        value, coord = utils.np_image.find_quadratic_subpixel_maximum_in_image(image)
+        value_coord_pairs.append((value, coord))
+        absolute_max_value = value
+        if absolute_max_value < self.min_max_value:
+            return value_coord_pairs
+        image = utils.np_image.draw_sphere(np.copy(image), center=coord, radius=self.min_max_distance, value=0)
+        value, coord = utils.np_image.find_quadratic_subpixel_maximum_in_image(image)
+        while value > absolute_max_value * self.multiple_min_max_value_factor:
+            value_coord_pairs.append((value, coord))
+            image = utils.np_image.draw_sphere(np.copy(image), center=coord, radius=self.min_max_distance, value=0)
+            value, coord = utils.np_image.find_quadratic_subpixel_maximum_in_image(image)
+        return value_coord_pairs
+
     def get_landmark(self, image, transformation=None, reference_sitk=None, output_spacing=None):
         """
         Returns a single landmark for the given parameters. The coordinates of the landmark are the maximum
@@ -71,6 +105,15 @@ class HeatmapTest(object):
         :return: A Landmark object.
         """
         output_spacing = output_spacing or [1] * image.ndim
+        if self.return_multiple_maxima:
+            landmarks = []
+            value_coord_pairs = self.get_multiple_maximum_coordinates(image)
+            for value, coord in value_coord_pairs:
+                coord = np.flip(coord, axis=0)
+                coord *= output_spacing
+                coord = utils.landmark.transform.transform_coords(coord, transformation)
+                landmarks.append(Landmark(coords=coord, is_valid=True, scale=1, value=value))
+            return landmarks
         if transformation is not None:
             if self.invert_transformation:
                 # transform prediction back to input image resolution, if specified.
