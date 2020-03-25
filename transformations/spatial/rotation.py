@@ -1,4 +1,5 @@
 import SimpleITK as sitk
+import numpy as np
 
 from transformations.spatial.base import SpatialTransformBase
 from utils.random import float_uniform
@@ -68,6 +69,32 @@ class Fixed(RotationTransformBase):
         :return: The sitk.AffineTransform().
         """
         return self.get_rotation_transform(self.dim, self.current_angles)
+
+
+class ImageDirectionToEyeDirection(RotationTransformBase):
+    """
+    A rotation transformation with fixed angles (in radian).
+    """
+    def __init__(self, dim, *args, **kwargs):
+        """
+        Initializer.
+        :param dim: The dimension.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
+        """
+        super(ImageDirectionToEyeDirection, self).__init__(dim, *args, **kwargs)
+
+    def get(self, **kwargs):
+        """
+        Returns the sitk transform based on the given parameters.
+        :param kwargs: Not used.
+        :return: The sitk.AffineTransform().
+        """
+        _, _, input_direction, _ = self.get_image_size_spacing_direction_origin(**kwargs)
+        inverse_input_direction = list(np.array(input_direction).reshape([self.dim, self.dim]).flatten())
+        t = sitk.AffineTransform(self.dim)
+        t.SetMatrix(inverse_input_direction)
+        return t
 
 
 class Random(RotationTransformBase):
