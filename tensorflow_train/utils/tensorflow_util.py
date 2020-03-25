@@ -1,7 +1,16 @@
 
+from collections import OrderedDict
 import tensorflow as tf
 
+
 def create_reset_metric(metric, variable_scope, **metric_args):
+    """
+    Creates tensors of a metric (e.g., running mean), its update, and reset operation.
+    :param metric: The metric and its tensors to create.
+    :param variable_scope: The variable scope which is needed to create the reset operation.
+    :param metric_args: The args used for generating the metric.
+    :return: Tensors of the metric, its update, and reset operation.
+    """
     with tf.variable_scope(variable_scope) as scope:
         metric_op, update_op = metric(**metric_args)
         vars = tf.contrib.framework.get_variables(scope, collection=tf.GraphKeys.LOCAL_VARIABLES)
@@ -31,25 +40,51 @@ def print_progress_bar(iteration, total, prefix='Testing ', suffix=' complete', 
 
 
 def create_placeholder(name, shape, shape_prefix=None, shape_postfix=None, data_type=None):
-    if shape_prefix is None:
-        shape_prefix = []
-    if shape_postfix is None:
-        shape_postfix = []
-    if data_type is None:
-        data_type = tf.float32
+    """
+    Creates a placeholder with name "'placeholder_' + name", shape (shape_prefix + shape + shape_postfix) and type data_type.
+    :param name: The name of the placeholder will be 'placeholder_' + name.
+    :param shape: The shape of the placeholder.
+    :param shape_prefix: The shape prefix. Default is [].
+    :param shape_postfix: The shape postfix. Default is [].
+    :param data_type: The data type of the placeholder. Default dtype if not given is tf.float32.
+    :return: The tf.placeholder.
+    """
+    shape_prefix = shape_prefix or []
+    shape_postfix = shape_postfix or []
+    data_type = data_type or tf.float32
     return tf.placeholder(data_type, shape_prefix + shape + shape_postfix, name='placeholder_' + name)
 
 
 def create_placeholders(name_shape_dict, shape_prefix=None, shape_postfix=None, data_types=None):
-    if shape_prefix is None:
-        shape_prefix = []
-    if shape_postfix is None:
-        shape_postfix = []
-    if data_types is None:
-        data_types = {}
-    return dict([(name, create_placeholder(name, shape, shape_prefix, shape_postfix, data_types.get(name, None)))
-                 for (name, shape) in name_shape_dict.items()])
+    """
+    Creates placeholders and returns them as an OrderedDict in the same order as name_shape_dict.
+    :param name_shape_dict: Dict or OrderedDict with name as key and shape as value.
+    :param shape_prefix: The shape prefix used for all shapes. Default is [].
+    :param shape_postfix: The shape postfix used for all shapes. Default is [].
+    :param data_types: The data types of all placeholders as a dict. Default dtype if not given is tf.float32.
+    :return: The tuple of all placeholders.
+    """
+    shape_prefix = shape_prefix or []
+    shape_postfix = shape_postfix or []
+    data_types = data_types or {}
+    return OrderedDict([(name, create_placeholder(name, shape, shape_prefix, shape_postfix, data_types.get(name, None)))
+                        for (name, shape) in name_shape_dict.items()])
 
+
+def create_placeholders_tuple(ordered_name_shape_dict, shape_prefix=None, shape_postfix=None, data_types=None):
+    """
+    Creates placeholders and returns them as a tuple in the same order as ordered_name_shape_dict.
+    :param ordered_name_shape_dict: OrderedDict with name as key and shape as value.
+    :param shape_prefix: The shape prefix used for all shapes. Default is [].
+    :param shape_postfix: The shape postfix used for all shapes. Default is [].
+    :param data_types: The data types of all placeholders as a dict. Default dtype if not given is tf.float32.
+    :return: The tuple of all placeholders.
+    """
+    placeholders = create_placeholders(ordered_name_shape_dict, shape_prefix, shape_postfix, data_types).values()
+    if len(placeholders) == 1:
+        return tuple(placeholders)[0]
+    else:
+        return tuple(placeholders)
 
 def reduce_sum_weighted(input, weights, axis=None, keep_dims=False):
     input_masked = input * weights
