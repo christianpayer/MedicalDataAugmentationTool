@@ -35,7 +35,7 @@ class SegmentationTest(object):
         self.all_labels_are_connected = all_labels_are_connected
         self.metric_values = {}
 
-    def get_transformed_image_sitk(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None):
+    def get_transformed_image(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None):
         """
         Returns the transformed predictions as a list of sitk images. If the transformation is None, the prediction_np image
         will not be transformed, but only split and converted to a list of sitk images.
@@ -53,10 +53,12 @@ class SegmentationTest(object):
                                                                                   transform=transformation,
                                                                                   interpolator=self.interpolator,
                                                                                   output_pixel_type=sitk.sitkFloat32)
+            prediction_np = utils.sitk_np.sitk_list_to_np(predictions_sitk, axis=0)
         else:
-            predictions_np = utils.np_image.split_by_axis(prediction_np, self.channel_axis)
-            predictions_sitk = [utils.sitk_np.np_to_sitk(prediction_np) for prediction_np in predictions_np]
-        return predictions_sitk
+            if self.channel_axis != 0:
+                prediction_np = utils.np_image.split_by_axis(prediction_np, self.channel_axis)
+                prediction_np = np.stack(prediction_np, axis=0)
+        return prediction_np
 
     def get_prediction_labels_list(self, prediction):
         """
@@ -68,18 +70,19 @@ class SegmentationTest(object):
         prediction_labels = utils.np_image.argmax(prediction, axis=0)
         return utils.np_image.split_label_image(prediction_labels, list(range(num_labels)))
 
-    def get_predictions_labels(self, predictions_list_sitk):
+    def get_predictions_labels(self, prediction):
         """
         Converts a list of sitk network predictions to the sitk label image.
         Also performs postprocessing, see postprocess_prediction_labels.
         :param predictions_list_sitk: A list of sitk images.
         :return: The predicted labels as an sitk image.
         """
-        prediction = utils.sitk_np.sitk_list_to_np(predictions_list_sitk, axis=0)
         prediction = self.postprocess_prediction_labels(prediction)
-        prediction_labels_list = self.get_prediction_labels_list(prediction)
-        prediction_labels = utils.np_image.merge_label_images(prediction_labels_list, self.labels)
-        return utils.sitk_np.np_to_sitk(prediction_labels)
+        prediction_labels = utils.np_image.argmax(prediction, axis=0)
+        for label_index, target_label in zip(range(len(self.labels)), self.labels):
+            if label_index != target_label:
+                prediction_labels[prediction_labels == label_index] = target_label
+        return prediction_labels
 
     def postprocess_prediction_labels(self, prediction):
         """
@@ -143,11 +146,13 @@ class SegmentationTest(object):
         :return: The predicted labels as an sitk image.
         """
         assert len(self.labels) == prediction_np.shape[self.channel_axis], 'number of labels must be equal to prediction image channel axis'
-        prediction_transformed_sitk = self.get_transformed_image_sitk(prediction_np, reference_sitk, output_spacing, transformation)
-        prediction_labels_sitk = self.get_predictions_labels(prediction_transformed_sitk)
+        prediction_transformed = self.get_transformed_image(prediction_np, reference_sitk, output_spacing, transformation)
+        prediction_labels = self.get_predictions_labels(prediction_transformed)
+        prediction_labels_sitk = utils.sitk_np.np_to_sitk(prediction_labels)
         if reference_sitk is not None:
             prediction_labels_sitk.CopyInformation(reference_sitk)
         if return_transformed_sitk:
-            return prediction_labels_sitk, prediction_transformed_sitk
+            return prediction_labels_sitk, prediction_transformed
         else:
             return prediction_labels_sitk
+
