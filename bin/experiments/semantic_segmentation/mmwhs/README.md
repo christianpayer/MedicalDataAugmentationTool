@@ -27,7 +27,7 @@ Run `main.py` to train the network. Adapt parameters in the file to use either M
 In order to train and test on other datasets, modify the `dataset.py` file. See the example files and documentation for the specific file formats. Set the parameter `save_debug_images = True` in order to see, if the network input images are reasonable.
 
 ## Citation
-If you use this code for your research, please cite our [paper](https://doi.org/10.1007/978-3-319-75541-0_20):
+If you use this code for your research, please cite our [paper](https://doi.org/10.1007/978-3-319-75541-0_20) and the overview paper of the [MMWHS2017 challenge](https://doi.org/10.1016/j.media.2019.101537)
 
 ```
 @inproceedings{Payer2018a,
@@ -36,6 +36,18 @@ If you use this code for your research, please cite our [paper](https://doi.org/
   booktitle = {Statistical Atlases and Computational Models of the Heart. ACDC and MMWHS Challenges. STACOM 2017},
   doi       = {10.1007/978-3-319-75541-0_20},
   pages     = {190--198},
-  year      = {2018},
+  year      = {2018}
+}
+```
+
+```
+@article{Zhuang2019,
+title   = {Evaluation of Algorithms for Multi-Modality Whole Heart Segmentation: An Open-Access Grand Challenge},
+author  = {Zhuang, Xiahai and Li, Lei and Payer, Christian and {\v{S}}tern, Darko and Urschler, Martin and Heinrich, Mattias P. and Oster, Julien and Wang, Chunliang and Smedby, {\"{O}}rjan and Bian, Cheng and Yang, Xin and Heng, Pheng-Ann and Mortazi, Aliasghar and Bagci, Ulas and Yang, Guanyu and Sun, Chenchen and Galisot, Gaetan and Ramel, Jean-Yves and Brouard, Thierry and Tong, Qianqian and Si, Weixin and Liao, Xiangyun and Zeng, Guodong and Shi, Zenglin and Zheng, Guoyan and Wang, Chengjia and MacGillivray, Tom and Newby, David and Rhode, Kawal and Ourselin, Sebastien and Mohiaddin, Raad and Keegan, Jennifer and Firmin, David and Yang, Guang},
+journal = {Medical Image Analysis},
+doi     = {10.1016/j.media.2019.101537},
+pages   = {101537},
+volume  = {58},
+year    = {2019}
 }
 ```
