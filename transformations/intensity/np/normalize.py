@@ -11,23 +11,28 @@ def robust_min_max(img, consideration_factors=(0.1, 0.1)):
     return img_sort[min_median_index], img_sort[max_median_index]
 
 
-def scale_min_max(img, old_range, new_range):
+def scale(img, old_range, new_range):
     shift = -old_range[0] + new_range[0] * (old_range[1] - old_range[0]) / (new_range[1] - new_range[0])
     scale = (new_range[1] - new_range[0]) / (old_range[1] - old_range[0])
     return (img + shift) * scale
 
 
+def scale_min_max(img, new_range):
+    old_range = np.amin(img), np.amax(img)
+    return scale(img, old_range, new_range)
+
+
 def normalize_mr_robust(img, out_range=(-1, 1), consideration_factor=0.1):
     _, max = robust_min_max(img, (0, consideration_factor))
     old_range = (0, max)
-    return scale_min_max(img, old_range, out_range)
+    return scale(img, old_range, out_range)
 
 
 def normalize(img, out_range=(-1, 1)):
     min_value = np.min(img)
     max_value = np.max(img)
     old_range = (min_value, max_value)
-    return scale_min_max(img, old_range, out_range)
+    return scale(img, old_range, out_range)
 
 
 def normalize_robust(img, out_range=(-1, 1), consideration_factors=(0.1, 0.1)):
@@ -36,4 +41,10 @@ def normalize_robust(img, out_range=(-1, 1), consideration_factors=(0.1, 0.1)):
         # fix to prevent div by zero
         max_value = min_value + 1
     old_range = (min_value, max_value)
-    return scale_min_max(img, old_range, out_range)
+    return scale(img, old_range, out_range)
+
+
+def normalize_zero_mean_one_std(img):
+    mean = np.mean(img)
+    std = np.std(img)
+    return (img - mean) / std
