@@ -20,7 +20,9 @@ class Landmark(object):
         :param value: The value of the landmark.
         """
         self.coords = coords
-        self.is_valid = is_valid or self.coords is not None
+        self.is_valid = is_valid
+        if self.is_valid is None:
+            self.is_valid = self.coords is not None
         self.scale = scale
         self.value = value
 
