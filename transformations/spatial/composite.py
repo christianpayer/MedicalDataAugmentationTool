@@ -1,5 +1,6 @@
-import SimpleITK as sitk
+
 from transformations.spatial.base import SpatialTransformBase
+from transformations.spatial.common import create_composite
 
 
 class Composite(SpatialTransformBase):
@@ -23,7 +24,6 @@ class Composite(SpatialTransformBase):
         :param kwargs: Optional parameters sent to the other transformations.
         :return: The composite sitk transform.
         """
-        compos = sitk.Transform(self.dim, sitk.sitkIdentity)
-        for i in range(len(self.transformations)):
-            compos.AddTransform(self.transformations[i].get(**kwargs))
-        return compos
+        transformations_list = [transformation.get(**kwargs) for transformation in self.transformations]
+        return create_composite(self.dim, transformations_list)
+
