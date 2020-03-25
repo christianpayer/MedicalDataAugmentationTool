@@ -225,28 +225,36 @@ def transform_np_output_to_sitk_input(output_image, output_spacing, channel_axis
                                         output_pixel_type=output_pixel_type)
 
 
+def transform_single_np_output_to_input(output_image, output_spacing, input_image_size, input_image_spacing, input_image_origin, input_image_direction, transform, interpolator='linear', output_pixel_type=None):
+    output_image_sitk = utils.sitk_np.np_to_sitk(output_image)
+    if output_spacing is not None:
+        output_image_sitk.SetSpacing(output_spacing)
+    transformed_output_image_sitk = resample(output_image_sitk,
+                                             transform.GetInverse(),
+                                             input_image_size,
+                                             input_image_spacing,
+                                             input_image_origin,
+                                             input_image_direction,
+                                             interpolator,
+                                             output_pixel_type)
+    return transformed_output_image_sitk
+
+
 def transform_np_output_to_input(output_image, output_spacing, channel_axis, input_image_size, input_image_spacing, input_image_origin, input_image_direction, transform, interpolator='linear', output_pixel_type=None):
     if channel_axis is not None:
         output_images = utils.np_image.split_by_axis(output_image, axis=channel_axis)
     else:
         output_images = [output_image]
 
-    transformed_output_images_sitk = []
-    for output_image in output_images:
-        output_image_sitk = utils.sitk_np.np_to_sitk(output_image)
-        if output_spacing is not None:
-            output_image_sitk.SetSpacing(output_spacing)
-        transformed_output_image_sitk = resample(output_image_sitk,
-                                                 transform.GetInverse(),
-                                                 input_image_size,
-                                                 input_image_spacing,
-                                                 input_image_origin,
-                                                 input_image_direction,
-                                                 interpolator,
-                                                 output_pixel_type)
-        transformed_output_images_sitk.append(transformed_output_image_sitk)
-
-    return transformed_output_images_sitk
+    return list(map(lambda output_image: transform_single_np_output_to_input(output_image,
+                                                                             output_spacing,
+                                                                             input_image_size,
+                                                                             input_image_spacing,
+                                                                             input_image_origin,
+                                                                             input_image_direction,
+                                                                             transform,
+                                                                             interpolator,
+                                                                             output_pixel_type), output_images))
 
 
 def connected_component(image):
@@ -293,3 +301,122 @@ def apply_np_image_function(image, f):
     output = utils.sitk_np.np_to_sitk(output_np)
     copy_information(image, output)
     return output
+
+def hausdorff_distances(image_0, image_1, labels):
+    label_images_0 = utils.sitk_image.split_label_image(image_0, labels)
+    label_images_1 = utils.sitk_image.split_label_image(image_1, labels)
+    hausdorff_distance_list = []
+    average_hausdorff_distance_list = []
+    for label_image_0, label_image_1 in zip(label_images_0, label_images_1):
+        try:
+            filter = sitk.HausdorffDistanceImageFilter()
+            filter.Execute(label_image_0, label_image_1)
+            current_hausdorff_distance = filter.GetHausdorffDistance()
+            current_average_hausdorff_distance = filter.GetAverageHausdorffDistance()
+        except:
+            current_hausdorff_distance = np.nan
+            current_average_hausdorff_distance = np.nan
+            pass
+        hausdorff_distance_list.append(current_hausdorff_distance)
+        average_hausdorff_distance_list.append(current_average_hausdorff_distance)
+    return hausdorff_distance_list, average_hausdorff_distance_list
+
+def surface_distance(label_image_0, label_image_1):
+    # code adapted from https://insightsoftwareconsortium.github.io/SimpleITK-Notebooks/Python_html/34_Segmentation_Evaluation.html
+    try:
+        # calculate distances on label contours
+        reference_distance_map = sitk.SignedMaurerDistanceMap(label_image_1, squaredDistance=False, useImageSpacing=True)
+        reference_distance_map_arr = sitk.GetArrayViewFromImage(reference_distance_map)
+        reference_surface = sitk.LabelContour(label_image_1)
+        reference_surface_arr = sitk.GetArrayViewFromImage(reference_surface)
+
+        segmented_distance_map = sitk.SignedMaurerDistanceMap(label_image_0, squaredDistance=False, useImageSpacing=True)
+        segmented_distance_map_arr = sitk.GetArrayViewFromImage(segmented_distance_map)
+        segmented_surface = sitk.LabelContour(label_image_0)
+        segmented_surface_arr = sitk.GetArrayViewFromImage(segmented_surface)
+
+        seg2ref_distances = np.abs(reference_distance_map_arr[segmented_surface_arr == 1])
+        ref2seg_distances = np.abs(segmented_distance_map_arr[reference_surface_arr == 1])
+
+        all_surface_distances = np.concatenate([seg2ref_distances, ref2seg_distances])
+
+        # # Multiply the binary surface segmentations with the distance maps. The resulting distance
+        # # maps contain non-zero values only on the surface (they can also contain zero on the surface)
+        # seg2ref_distance_map = reference_distance_map * sitk.Cast(segmented_surface, sitk.sitkFloat32)
+        # ref2seg_distance_map = segmented_distance_map * sitk.Cast(reference_surface, sitk.sitkFloat32)
+        #
+        # statistics_image_filter = sitk.StatisticsImageFilter()
+        # # Get the number of pixels in the reference surface by counting all pixels that are 1.
+        # statistics_image_filter.Execute(reference_surface)
+        # num_reference_surface_pixels = int(statistics_image_filter.GetSum())
+        # # Get the number of pixels in the reference surface by counting all pixels that are 1.
+        # statistics_image_filter.Execute(segmented_surface)
+        # num_segmented_surface_pixels = int(statistics_image_filter.GetSum())
+        #
+        # # Get all non-zero distances and then add zero distances if required.
+        # seg2ref_distance_map_arr = sitk.GetArrayViewFromImage(seg2ref_distance_map)
+        # seg2ref_distances = list(seg2ref_distance_map_arr[seg2ref_distance_map_arr != 0])
+        # seg2ref_distances = seg2ref_distances + list(np.zeros(num_segmented_surface_pixels - len(seg2ref_distances)))
+        # ref2seg_distance_map_arr = sitk.GetArrayViewFromImage(ref2seg_distance_map)
+        # ref2seg_distances = list(ref2seg_distance_map_arr[ref2seg_distance_map_arr != 0])
+        # ref2seg_distances = ref2seg_distances + list(np.zeros(num_reference_surface_pixels - len(ref2seg_distances)))
+        #
+        # all_surface_distances = seg2ref_distances + ref2seg_distances
+
+        current_mean_surface_distance = np.mean(all_surface_distances)
+        current_median_surface_distance = np.median(all_surface_distances)
+        current_std_surface_distance = np.std(all_surface_distances)
+        current_max_surface_distance = np.max(all_surface_distances)
+    except:
+        current_mean_surface_distance = np.nan
+        current_median_surface_distance = np.nan
+        current_std_surface_distance = np.nan
+        current_max_surface_distance = np.nan
+        pass
+
+    return current_mean_surface_distance, current_median_surface_distance, current_std_surface_distance, current_max_surface_distance
+
+def surface_distances(image_0, image_1, labels, calculate_mean=True, calculate_median=True, calculate_std=True, calculate_max=True):
+    label_images_0 = utils.sitk_image.split_label_image(image_0, labels)
+    label_images_1 = utils.sitk_image.split_label_image(image_1, labels)
+    mean_surface_distance_list = []
+    median_surface_distance_list = []
+    std_surface_distance_list = []
+    max_surface_distance_list = []
+
+    for current_mean_surface_distance, current_median_surface_distance, current_std_surface_distance, current_max_surface_distance in map(surface_distance, label_images_0, label_images_1):
+        mean_surface_distance_list.append(current_mean_surface_distance)
+        median_surface_distance_list.append(current_median_surface_distance)
+        std_surface_distance_list.append(current_std_surface_distance)
+        max_surface_distance_list.append(current_max_surface_distance)
+    return_tuple = tuple()
+    if calculate_mean:
+        return_tuple += (mean_surface_distance_list,)
+    if calculate_median:
+        return_tuple += (median_surface_distance_list,)
+    if calculate_std:
+        return_tuple += (std_surface_distance_list,)
+    if calculate_max:
+        return_tuple += (max_surface_distance_list,)
+    return return_tuple
+
+def label_to_rgb(label):
+    colormap = [[255, 0, 0], [0, 205, 0], [0, 0, 255], [0, 255, 255],
+        [255, 0, 255], [255, 127, 0], [0, 100, 0], [138, 43, 226],
+        [139, 35, 35], [0, 0, 128], [139, 139, 0], [255, 62, 150],
+        [139, 76, 57], [0, 134, 139], [205, 104, 57], [191, 62, 255],
+        [0, 139, 69], [199, 21, 133], [205, 55, 0], [32, 178, 170],
+        [106, 90, 205], [255, 20, 147], [69, 139, 116], [72, 118, 255],
+        [205, 79, 57], [0, 0, 205], [139, 34, 82], [139, 0, 139],
+        [238, 130, 238], [139, 0, 0]]
+    color = colormap[label % len(colormap)]
+    return color
+
+def set_spacing_origin_direction(image, spacing, origin, direction):
+    if spacing is not None:
+        image.SetSpacing(spacing)
+    if origin is not None:
+        image.SetOrigin(origin)
+    if direction is not None:
+        image.SetDirection(direction)
+    return image
