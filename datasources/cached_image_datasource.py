@@ -51,6 +51,12 @@ class CachedImageDataSource(ImageDataSource):
         self.cache = LRUCacheWithMissingFunction(cache_maxsize, getsizeof=self.image_size, missing=self.load_and_preprocess)
         self.lock = Lock()
 
+    def clear_cache(self):
+        """
+        Clears the cache.
+        """
+        self.cache.clear()
+
     def image_size(self, image):
         """
         Returns the image size in MB. Used for calculating the current cache size.
