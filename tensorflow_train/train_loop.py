@@ -109,7 +109,7 @@ class MainLoopBase(object):
         return os.path.join(self.output_folder, 'iter_' + str(self.current_iter), file_name)
 
     def init_all(self):
-        self.initNetworks()
+        self.init_networks()
         self.initLossAggregators()
         self.init_variables()
         self.start_threads()
@@ -243,6 +243,10 @@ class MainLoopBase(object):
                                                   'test',
                                                   os.path.join(self.output_folder, 'test'),
                                                   os.path.join(self.output_folder, 'test.csv'))
+
+    def init_networks(self):
+        print('initNetworks() is deprecated and may be removed in later versions. Use init_networks() instead.')
+        self.initNetworks()
 
     def initNetworks(self):
         raise NotImplementedError()
