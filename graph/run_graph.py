@@ -21,7 +21,8 @@ def run_graph(fetches, feed_dict=None):
     # create Lifo queue and add current fetches list.
     node_queue = queue.LifoQueue()
     for fetch in fetches:
-        node_queue.put(fetch)
+        if feed_dict is None or fetch not in feed_dict:
+            node_queue.put(fetch)
 
     while not node_queue.empty():
         current_node = node_queue.get()
