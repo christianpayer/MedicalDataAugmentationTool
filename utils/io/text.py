@@ -47,25 +47,27 @@ def load_dict_idl(file_name, dim, value_type=str):
     return d
 
 
-def load_list(file_name):
+def load_list(file_name, value_type=str):
     """
     Loads a .txt file as a list, where every line is a list entry.
     :param file_name: The file name to load.
+    :param value_type: Every list entry is converted to this type.
     :return: A list of every line of the .txt file.
     """
     with open(file_name, 'r') as file:
-        return [line.strip('\n') for line in file.readlines()]
+        return [value_type(line.strip('\n')) for line in file.readlines()]
 
 
-def load_list_csv(file_name):
+def load_list_csv(file_name, value_type=str):
     """
     Loads a .csv file as a list of lists, where every line is a list entry.
     :param file_name: The file name to load.
+    :param value_type: Every list entry is converted to this type.
     :return: A list of lists of every value of every line of the .csv file.
     """
     with open(file_name, 'r') as file:
         reader = csv.reader(file)
-        return [row for row in reader]
+        return [list(map(value_type, row)) for row in reader]
 
 
 def save_dict_csv(d, file_name, header=None):
