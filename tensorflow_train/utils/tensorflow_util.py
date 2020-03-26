@@ -86,36 +86,60 @@ def create_placeholders_tuple(ordered_name_shape_dict, shape_prefix=None, shape_
     else:
         return tuple(placeholders)
 
-def reduce_sum_weighted(input, weights, axis=None, keep_dims=False):
-    input_masked = input * weights
-    return tf.reduce_sum(input_masked, axis=axis, keep_dims=keep_dims)
+
+def save_divide(x, y):
+    """
+    Divides x by y. If y == 0, return x instead.
+    :param x: Tensor.
+    :param y: Tensor.
+    :return: x / y
+    """
+    return x / tf.where(y > 0, y, tf.ones_like(y))
 
 
-def reduce_mean_weighted(input, weights, axis=None, keep_dims=False):
+def save_reduce_mean(x, axis=None, keepdims=False):
+    return save_divide(tf.reduce_sum(x, axis=axis, keepdims=keepdims), tf.cast(tf.count_nonzero(x, axis=axis, keepdims=keepdims), x.dtype))
+
+
+def reduce_sum_weighted(input, weights, axis=None, keepdims=False):
     input_masked = input * weights
-    sum = tf.reduce_sum(input_masked, axis=axis, keep_dims=keep_dims)
+    return tf.reduce_sum(input_masked, axis=axis, keepdims=keepdims)
+
+
+def reduce_mean_weighted(input, weights, axis=None, keepdims=False):
+    input_masked = input * weights
+    sum = tf.reduce_sum(input_masked, axis=axis, keepdims=keepdims)
     # TODO: change to save_divide, when implemented in tensorflow
     # bugfix for nan propagation:
     # set num_elements to 1, when they are actually zero. this will not influence the output value, as sum will be 0 in this case as well
-    num_elements = tf.reduce_sum(weights, axis=axis, keep_dims=keep_dims)
-    num_elements = tf.where(num_elements > 0, num_elements, tf.ones_like(num_elements))
-    return sum / num_elements
+    num_elements = tf.reduce_sum(weights, axis=axis, keepdims=keepdims)
+    return save_divide(sum, num_elements)
 
 
-def reduce_sum_masked(input, mask, axis=None, keep_dims=False):
+def reduce_sum_masked(input, mask, axis=None, keepdims=False):
     assert mask.dtype == tf.bool, 'mask must be bool'
     # convert mask to float and use it as weights
     weights = tf.cast(mask, dtype=input.dtype)
-    return reduce_sum_weighted(input, weights, axis, keep_dims)
+    return reduce_sum_weighted(input, weights, axis, keepdims)
     #bad_data, good_data = tf.dynamic_partition(input, tf.cast(mask, tf.int32), 2)
     #return tf.reduce_sum(bad_data, axis=axis, keep_dims=keep_dims)
 
 
-def reduce_mean_masked(input, mask, axis=None, keep_dims=False):
+def reduce_mean_masked(input, mask, axis=None, keepdims=False):
     assert mask.dtype == tf.bool, 'mask must be bool'
     # convert mask to float and use it as weights
     weights = tf.cast(mask, dtype=input.dtype)
-    return reduce_mean_weighted(input, weights, axis, keep_dims)
+    return reduce_mean_weighted(input, weights, axis, keepdims)
+
+
+def reduce_median(tensor, axis=None, keepdims=False):
+    return tf.contrib.distributions.percentile(tensor, 50., axis=axis, keep_dims=keepdims)
+
+
+def reduce_median_masked(tensor, mask, axis=None, keepdims=False):
+    tensor_masked = tf.boolean_mask(tensor, mask)
+    #print('shapes', tensor.shape, mask.shape, tensor_masked.shape)
+    return tf.contrib.distributions.percentile(tensor_masked, 50., axis=axis, keep_dims=keepdims)
 
 
 def reduce_mean_support_empty(input, keepdims=False):
@@ -142,10 +166,24 @@ def reduce_mean_support_empty(input, keepdims=False):
 #     return bit_tensors
 
 
-def bit_tensor(input, bit_index):
+def masked_bit(input, bit_index):
+    """
+    Returns a boolean tensor, where values are true, on which the bit on bit_index is True.
+    :param input: The input tensor to check.
+    :param bit_index: The bit index which will be compared with bitwise and. (LSB 0 order)
+    :return: The tensor.
+    """
     assert input.dtype in [tf.int8, tf.int16, tf.int32, tf.int64, tf.uint8, tf.uint16, tf.uint32, tf.uint64], 'unsupported data type, must be *int*'
     current_bit = tf.bitwise.left_shift(tf.constant(1, dtype=input.dtype), tf.cast(bit_index, dtype=input.dtype))
     return tf.greater(tf.bitwise.bitwise_and(input, current_bit), 0)
+
+
+def most_significant_bit(number):
+    bitpos = tf.constant(0, number.dtype)
+    cond = lambda current_number, _: current_number > 0
+    shift_and_increment = lambda current_number, current_bitpos: (tf.bitwise.right_shift(current_number, tf.constant(1, current_number.dtype)), current_bitpos + 1)
+    _, final_bitpos = tf.while_loop(cond, shift_and_increment, (number, bitpos))
+    return final_bitpos
 
 
 def get_reg_loss(reg_constant, collect_kernel_variables=False):
@@ -169,3 +207,22 @@ def get_reg_loss(reg_constant, collect_kernel_variables=False):
         else:
             loss_reg = 0
     return loss_reg
+
+
+def masked_apply(tensor, op, mask, set_outside_zero=True):
+    """
+    Apply the function op to tensor only at locations indicated by mask. If set_outside_zero == True, set the
+    locations outside the mask to zero, otherwise keep original value of tensor.
+    :param tensor: The tensor on which op is applied.
+    :param op: The operation.
+    :param mask: The boolean mask.
+    :param set_outside_zero: If True, set the locations outside the mask to zero, otherwise keep original values of tensor.
+    :return: Tensor with applied function.
+    """
+    chosen = tf.boolean_mask(tensor, mask)
+    applied = op(chosen)
+    idx = tf.to_int32(tf.where(mask))
+    result = tf.scatter_nd(idx, applied, tf.shape(tensor))
+    if not set_outside_zero:
+        result = tf.where(mask, result, tensor)
+    return result

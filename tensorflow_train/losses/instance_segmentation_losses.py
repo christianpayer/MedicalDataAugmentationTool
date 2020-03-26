@@ -1,7 +1,7 @@
 
 import tensorflow as tf
 from tensorflow_train.utils.data_format import get_image_axes
-from tensorflow_train.utils.tensorflow_util import reduce_mean_masked, reduce_sum_masked, bit_tensor
+from tensorflow_train.utils.tensorflow_util import reduce_mean_masked, reduce_sum_masked
 
 
 def cosine_embedding_single_instance_loss(embeddings, target_instances_mask, other_instances_mask, embeddings_norm=None, normalize=False, l=1.0, term_1_squared=False, term_2_factor=0, use_first_frame_for_mean=False, data_format='channels_first'):
@@ -21,15 +21,15 @@ def cosine_embedding_single_instance_loss(embeddings, target_instances_mask, oth
     if use_first_frame_for_mean:
         slices = [slice(None)] * 4
         slices.insert(frame_axis, slice(0, 1))
-        h = reduce_mean_masked(embeddings[slices], target_instances_mask[slices], axis=image_axes, keep_dims=True)
+        h = reduce_mean_masked(embeddings[slices], target_instances_mask[slices], axis=image_axes, keepdims=True)
     else:
-        h = reduce_mean_masked(embeddings, target_instances_mask, axis=image_axes, keep_dims=True)
+        h = reduce_mean_masked(embeddings, target_instances_mask, axis=image_axes, keepdims=True)
     if embeddings_norm is None:
         embeddings_norm = tf.nn.l2_normalize(embeddings, dim=embedding_axis)
     # l2_normalize embeddings -> needed for cos_simliarity
     h_norm = tf.nn.l2_normalize(h, dim=embedding_axis)
     # calculate cos_similarity with target mean embedding and all embeddings
-    cos_similarity = tf.reduce_sum(h_norm * embeddings_norm, axis=embedding_axis, keep_dims=True)
+    cos_similarity = tf.reduce_sum(h_norm * embeddings_norm, axis=embedding_axis, keepdims=True)
     # term_0: target mean embedding and target pixel embeddings should be as similar as possible
     term_0 = 1 - cos_similarity
     if term_1_squared:
@@ -49,8 +49,8 @@ def cosine_embedding_single_instance_loss(embeddings, target_instances_mask, oth
 
     term_2 = 0
     if term_2_factor > 0:
-        instance_mask = tf.reduce_any(target_instances_mask, axis=image_axes, keep_dims=True)
-        term_2 = tf.norm(h_norm, ord=1, axis=embedding_axis, keep_dims=True)
+        instance_mask = tf.reduce_any(target_instances_mask, axis=image_axes, keepdims=True)
+        term_2 = tf.norm(h_norm, ord=1, axis=embedding_axis, keepdims=True)
         term_2 = reduce_mean_masked(term_2, instance_mask) * term_2_factor
 
     loss = term_0 + l * term_1 + term_2
