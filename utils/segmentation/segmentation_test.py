@@ -135,7 +135,7 @@ class SegmentationTest(object):
         prediction_filter = np.stack([all_labels_prediction] * prediction.shape[0], axis=0) == 0
         prediction[prediction_filter] = -np.inf
 
-    def get_label_image(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None, return_transformed_sitk=False):
+    def get_label_image(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None, return_transformed_sitk=False, image_type=None):
         """
         Returns the label image as an sitk image. Performs resampling and postprocessing.
         :param prediction_np: The np network predictions.
@@ -143,12 +143,13 @@ class SegmentationTest(object):
         :param output_spacing: The output spacing of the prediction_np array.
         :param transformation: The sitk transformation used to transform the reference_sitk image to the network input.
         :param return_transformed_sitk: If true, also return the transformed predictions as sitk images.
+        :param image_type: The image type to convert the np labels to, before converting them to an sitk image.
         :return: The predicted labels as an sitk image.
         """
         assert len(self.labels) == prediction_np.shape[self.channel_axis], 'number of labels must be equal to prediction image channel axis'
         prediction_transformed = self.get_transformed_image(prediction_np, reference_sitk, output_spacing, transformation)
         prediction_labels = self.get_predictions_labels(prediction_transformed)
-        prediction_labels_sitk = utils.sitk_np.np_to_sitk(prediction_labels)
+        prediction_labels_sitk = utils.sitk_np.np_to_sitk(prediction_labels, type=image_type)
         if reference_sitk is not None:
             prediction_labels_sitk.CopyInformation(reference_sitk)
         if return_transformed_sitk:
