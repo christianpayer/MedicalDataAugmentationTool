@@ -4,8 +4,24 @@ Some example applications are under `bin/experiments`. I will add more examples 
 As this framework is mainly used for research, some files are not well documented. However, I'm working on improving this.
 If you have problems or find any bugs, don't hesitate to send me a message.
 
+Update: This project uses [git-lfs](https://git-lfs.github.com/) for managing the large pretrained binary model files. So you need to install git-lfs at first before cloning the repository.
+
 ## Citation
 If you use this code for your research, please cite any of our papers.
+
+[Coarse to Fine Vertebrae Localization and Segmentation with SpatialConfiguration-Net and U-Net](https://doi.org/10.5220/0008975201240133)
+
+```
+@inproceedings{Payer2020,
+  title     = {Coarse to Fine Vertebrae Localization and Segmentation with SpatialConfiguration-Net and U-Net},
+  author    = {Payer, Christian and {\v{S}}tern, Darko and Bischof, Horst and Urschler, Martin},
+  booktitle = {Proceedings of the 15th International Joint Conference on Computer Vision, Imaging and Computer Graphics Theory and Applications - Volume 5: VISAPP},
+  doi       = {10.5220/0008975201240133},
+  pages     = {124--133},
+  volume    = {5},
+  year      = {2020}
+}
+```
 
 [Segmenting and Tracking Cell Instances with Cosine Embeddings and Recurrent Hourglass Networks](https://doi.org/10.1016/j.media.2019.06.015):
 
