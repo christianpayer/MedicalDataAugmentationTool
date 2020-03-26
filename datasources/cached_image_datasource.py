@@ -55,7 +55,8 @@ class CachedImageDataSource(ImageDataSource):
         """
         Clears the cache.
         """
-        self.cache.clear()
+        with self.lock:
+            self.cache.clear()
 
     def image_size(self, image):
         """
