@@ -105,8 +105,8 @@ class MainLoopBase(object):
     def output_folder_for_current_iteration(self):
         return os.path.join(self.output_folder, 'iter_' + str(self.current_iter))
 
-    def output_file_for_current_iteration(self, file_name):
-        return os.path.join(self.output_folder, 'iter_' + str(self.current_iter), file_name)
+    def output_file_for_current_iteration(self, *args):
+        return os.path.join(self.output_folder, 'iter_' + str(self.current_iter), *args)
 
     def init_all(self):
         self.init_networks()
