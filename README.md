@@ -1,10 +1,17 @@
 # MedicalDataAugmentationTool
 This tool allows on-the-fly augmentation and training for networks in the medical imaging domain. It uses [SimpleITK](http://www.simpleitk.org/) to load and augment input data, and [Tensorflow](https://www.tensorflow.org/) to define and train networks.
-Some example applications are under `bin/experiments`. I will add more examples the near future.
 As this framework is mainly used for research, some files are not well documented. However, I'm working on improving this.
 If you have problems or find any bugs, don't hesitate to send me a message.
 
-Update: This project uses [git-lfs](https://git-lfs.github.com/) for managing the large pretrained binary model files. So you need to install git-lfs at first before cloning the repository.
+Update: The `bin` folder with example experiments got removed.
+The individual experiments of our papers are now in dedicated repositories due to increased memory requirements.
+
+List of experiment repositories:
+
+  * [HeatmapRegression](https://github.com/christianpayer/MedicalDataAugmentationTool-HeatmapRegression)
+  * [MMWHS](https://github.com/christianpayer/MedicalDataAugmentationTool-MMWHS)
+  * [CellTracking](https://github.com/christianpayer/MedicalDataAugmentationTool-CellTracking)
+  * [VerSe](https://github.com/christianpayer/MedicalDataAugmentationTool-VerSe)
 
 ## Citation
 If you use this code for your research, please cite any of our papers.
