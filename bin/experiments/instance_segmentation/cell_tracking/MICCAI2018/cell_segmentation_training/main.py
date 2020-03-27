@@ -45,8 +45,8 @@ class MainLoop(MainLoopBase):
         self.create_instances = True
         self.clustering_coord_factors = 0.01
         self.clustering_min_label_size = 50
-        self.challenge_base_folder = '../celltrackingchallenge/'
-        self.output_base_folder = '/media1/experiments/cell_tracking/miccai2018_segmentation/' + self.dataset_name
+        self.challenge_base_folder = '../../celltrackingchallenge/'
+        self.output_base_folder = './output/' + self.dataset_name
         self.training_base_folder = os.path.join(self.challenge_base_folder, 'trainingdataset/', self.dataset_name)
         self.testing_base_folder = os.path.join(self.challenge_base_folder, 'challengedataset/', self.dataset_name)
         self.output_folder = os.path.join(self.output_base_folder, self.output_folder_timestamp())

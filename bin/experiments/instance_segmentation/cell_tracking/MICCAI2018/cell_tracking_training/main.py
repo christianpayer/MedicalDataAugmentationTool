@@ -39,8 +39,8 @@ class MainLoop(MainLoopBase):
         self.num_frames = 10
         self.embeddings_dim = 16
         self.test_on_challenge_data = True
-        self.challenge_base_folder = '../celltrackingchallenge/'
-        self.output_base_folder = '/media1/experiments/cell_tracking/miccai2018/' + self.dataset_name
+        self.challenge_base_folder = '../../celltrackingchallenge/'
+        self.output_base_folder = './output/' + self.dataset_name
         self.training_base_folder = os.path.join(self.challenge_base_folder, 'trainingdataset/', self.dataset_name)
         self.testing_base_folder = os.path.join(self.challenge_base_folder, 'challengedataset/', self.dataset_name)
         self.output_folder = os.path.join(self.output_base_folder, self.output_folder_timestamp())
