@@ -46,30 +46,32 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         else:
             raise Exception('unsupported data format')
 
-    def is_flipped(self, transformation):
+    def is_flipped(self, transformation, output_size):
         """
         Returns True, if the current transformation is flipped
         :param transformation: transformation to check
+        :param output_size: The output size.
         :return: True, if any dimension of the transformation is flipped, False, otherwise
         """
-        flipped = transformations.spatial.common.flipped_dimensions(transformation, self.output_size)
+        flipped = transformations.spatial.common.flipped_dimensions(transformation, output_size)
         is_flipped = functools.reduce(lambda a, b: a ^ b, flipped, 0)
         return is_flipped
 
-    def is_valid_and_within_size(self, landmark):
+    def is_valid_and_within_size(self, landmark, output_size):
         """
         Returns True, if landmark is valid, and all coordinates are within [0] * self.dim and self.output_size.
         Only dimensions where output_size is not None are evaluated.
         :param landmark: The landmark to test.
+        :param output_size: The output size.
         :return: True, if all conditions hold.
         """
         if not landmark.is_valid:
             return False
         if not np.all(landmark.coords >= 0):
             return False
-        if self.output_size is not None:
+        if output_size is not None:
             for i in range(self.dim):
-                if self.output_size[i] is not None and landmark.coords[i] >= self.output_size[i]:
+                if output_size[i] is not None and landmark.coords[i] >= output_size[i]:
                     return False
         return True
 
@@ -110,24 +112,27 @@ class LandmarkGeneratorBase(TransformationGeneratorBase):
         """
         return self.filter_landmarks(self.flip_landmarks(landmarks, flip))
 
-    def transform_landmarks(self, landmarks, transformation):
+    def transform_landmarks(self, landmarks, transformation, output_size, output_spacing):
         """
         Transform landmarks according to transformation
         :param landmarks: list of landmarks to transform
         :param transformation: transformation to perform
+        :param output_size: The output size.
+        :param output_spacing: The output spacing.
         :return: list of transformed landmarks
         """
-        return utils.landmark.transform.transform_landmarks_inverse(landmarks, transformation, self.output_size, self.output_spacing, self.min_max_transformation_distance)
+        return utils.landmark.transform.transform_landmarks_inverse(landmarks, transformation, output_size, output_spacing, self.min_max_transformation_distance)
 
-    def preprocess_landmarks(self, landmarks, transformation, flip):
+    def preprocess_landmarks(self, landmarks, transformation, output_size, output_spacing):
         """
         Flip, filter and transform landmarks
         :param landmarks: list of landmarks to flip, filter and transform
         :param transformation: transformation to perform
-        :param flip: if True, landmarks will be flipped
+        :param output_size: The output size.
+        :param output_spacing: The output spacing.
         :return: list of flipped, filtered and transformed landmarks
         """
-        return self.transform_landmarks(self.flip_and_filter_landmarks(landmarks, flip), transformation)
+        return self.transform_landmarks(self.flip_and_filter_landmarks(landmarks, self.is_flipped(transformation, output_size)), transformation, output_size, output_spacing)
 
 
 class LandmarkGenerator(LandmarkGeneratorBase):
@@ -135,7 +140,7 @@ class LandmarkGenerator(LandmarkGeneratorBase):
     Generates a numpy array of landmark coordinates. The output shape will be [num_landmarks, dim + 1].
     The first entry in the second dimension defines, whether the landmark is valid.
     """
-    def get(self, landmarks, transformation):
+    def get(self, landmarks, transformation, **kwargs):
         """
         Return generated landmarks. The resulting np array has the shape [num_landmarks, dim + 1], where the first
         dimension is the index of the landmark. The second dimension has 1 as first entry, if the landmark is valid and 0 otherwise.
@@ -144,11 +149,12 @@ class LandmarkGenerator(LandmarkGeneratorBase):
         :param transformation: transformation to transform landmarks
         :return: landmarks with shape [num_landmarks, dim + 1]
         """
-        flip = self.is_flipped(transformation)
-        preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, flip)
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
+        preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, output_size, output_spacing)
         output = np.zeros((len(preprocessed_landmarks), self.dim + 1), dtype=np.float32)
         for i, preprocessed_landmark in enumerate(preprocessed_landmarks):
-            if self.is_valid_and_within_size(preprocessed_landmark):
+            if self.is_valid_and_within_size(preprocessed_landmark, output_size):
                 output[i, :] = [1] + list(reversed(preprocessed_landmark.coords.tolist()))
 
         return output
@@ -159,20 +165,21 @@ class LandmarkGeneratorMultiple(LandmarkGeneratorBase):
     Generates a numpy array of multiple landmark coordinates. The output shape will be [num_instances, num_landmarks, dim + 1].
     The first entry in the third dimension defines, whether the landmark is valid.
     """
-    def get(self, landmarks_multiple, transformation):
+    def get(self, landmarks_multiple, transformation, **kwargs):
         """
         Return generated heatmaps
         :param landmarks_multiple: list of list of landmarks
         :param transformation: transformation to transform landmarks
         :return: landmarks with shape [num_instances, num_landmarks, dim + 1]
         """
-        flip = self.is_flipped(transformation)
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
         outputs = []
         for landmarks in landmarks_multiple:
-            preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, flip)
+            preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, output_size, output_spacing)
             output = np.zeros((len(preprocessed_landmarks), self.dim + 1), dtype=np.float32)
             for i, preprocessed_landmark in enumerate(preprocessed_landmarks):
-                if preprocessed_landmark.is_valid and np.all(preprocessed_landmark.coords >= 0) and np.all(preprocessed_landmark.coords < self.output_size):
+                if preprocessed_landmark.is_valid and np.all(preprocessed_landmark.coords >= 0) and np.all(preprocessed_landmark.coords < output_size):
                     output[i, :] = [1] + list(reversed(preprocessed_landmark.coords.tolist()))
             outputs.append(output)
 
@@ -190,6 +197,7 @@ class LandmarkGeneratorHeatmap(LandmarkGeneratorBase):
                  sigma,
                  scale_factor,
                  normalize_center,
+                 np_pixel_type=np.float32,
                  *args, **kwargs):
         """
         Initializer
@@ -199,29 +207,31 @@ class LandmarkGeneratorHeatmap(LandmarkGeneratorBase):
         :param scale_factor: heatmap scale factor, each value of the Gaussian will be multiplied with this value
         :param normalize_center: if True, the value on the center is set to scale_factor
                                  otherwise, the default gaussian normalization factor is used
+        :param np_pixel_type: The heatmap output type.
         :param args: Arguments passed to super init.
         :param kwargs: Keyword arguments passed to super init.
         """
         super(LandmarkGeneratorHeatmap, self).__init__(dim=dim, output_size=output_size, output_spacing=output_spacing, *args, **kwargs)
-        self.output_size_np = list(reversed(self.output_size))
         self.sigma = sigma
         self.scale_factor = scale_factor
         self.normalize_center = normalize_center
+        self.np_pixel_type = np_pixel_type
 
-    def get(self, landmarks, transformation):
+    def get(self, landmarks, transformation, **kwargs):
         """
         Return generated heatmaps
         :param landmarks: list of landmarks
         :param transformation: transformation to transform landmarks
         :return: generated heatmaps
         """
-        flip = self.is_flipped(transformation)
-        preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, flip)
-        heatmap_image_generator = HeatmapImageGenerator(image_size=self.output_size_np,
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
+        preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, output_size, output_spacing)
+        heatmap_image_generator = HeatmapImageGenerator(image_size=list(reversed(output_size)),
                                                         sigma=self.sigma,
                                                         scale_factor=self.scale_factor,
                                                         normalize_center=self.normalize_center)
-        heatmaps = heatmap_image_generator.generate_heatmaps(preprocessed_landmarks, self.stack_axis)
+        heatmaps = heatmap_image_generator.generate_heatmaps(preprocessed_landmarks, self.stack_axis, dtype=self.np_pixel_type)
         return heatmaps
 
 
@@ -248,23 +258,23 @@ class LandmarkGeneratorMultipleHeatmap(LandmarkGeneratorBase):
         :param kwargs: Keyword arguments passed to super init.
         """
         super(LandmarkGeneratorMultipleHeatmap, self).__init__(dim=dim, output_size=output_size, *args, **kwargs)
-        self.output_size_np = list(reversed(self.output_size))
         self.sigma = sigma
         self.scale_factor = scale_factor
         self.normalize_center = normalize_center
 
-    def get(self, landmarks_multiple, transformation):
+    def get(self, landmarks_multiple, transformation, **kwargs):
         """
         Return generated heatmaps
         :param landmarks_multiple: list of list of landmarks
         :param transformation: transformation to transform landmarks
         :return: generated heatmaps
         """
-        flip = self.is_flipped(transformation)
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
         heatmaps = None
         for i, landmarks in enumerate(landmarks_multiple):
-            preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, flip)
-            heatmap_image_generator = HeatmapImageGenerator(image_size=self.output_size_np,
+            preprocessed_landmarks = self.preprocess_landmarks(landmarks, transformation, output_size, output_spacing)
+            heatmap_image_generator = HeatmapImageGenerator(image_size=list(reversed(output_size)),
                                                             sigma=self.sigma,
                                                             scale_factor=self.scale_factor,
                                                             normalize_center=self.normalize_center)
@@ -295,17 +305,17 @@ class LandmarkGeneratorMask(LandmarkGeneratorBase):
         :param kwargs: Keyword arguments passed to super init.
         """
         super(LandmarkGeneratorMask, self).__init__(dim, output_size, *args, **kwargs)
-        self.output_size_np = list(reversed(self.output_size))
         self.ones_if_every_point_is_invalid = ones_if_every_point_is_invalid
 
-    def get(self, landmarks, transformation):
+    def get(self, landmarks, transformation, **kwargs):
         """
         Return generated heatmaps
         :param landmarks: list of landmarks
         :param transformation: transformation to transform landmarks
         :return: generated heatmaps
         """
-        flip = self.is_flipped(transformation)
+        output_size = kwargs.get('output_size', self.output_size)
+        flip = self.is_flipped(transformation, output_size)
         # although, we do not need the landmark's coordinate, we still need to preprocess the landmarks
         # to determine which landmark is_valid
         preprocessed_landmarks = self.flip_and_filter_landmarks(landmarks, flip)
@@ -314,15 +324,15 @@ class LandmarkGeneratorMask(LandmarkGeneratorBase):
             # if there is no point valid -> create ones mask, as the person is not visible on the frame
             # useful / needed for tracking
             if all([not landmark.is_valid for landmark in preprocessed_landmarks]):
-                current_output_size_np = np.insert(np.array(self.output_size_np), self.stack_axis, np.array([len(preprocessed_landmarks)]))
+                current_output_size_np = np.insert(np.array(list(reversed(output_size))), self.stack_axis, np.array([len(preprocessed_landmarks)]))
                 return np.ones(current_output_size_np, np.float32)
 
         # append ones or zeros depending on landmark.is_valid
         mask_list = []
         for landmark in preprocessed_landmarks:
             if landmark.is_valid:
-                mask_list.append(np.ones(self.output_size_np, np.float32))
+                mask_list.append(np.ones(list(reversed(output_size)), np.float32))
             else:
-                mask_list.append(np.zeros(self.output_size_np, np.float32))
+                mask_list.append(np.zeros(list(reversed(output_size)), np.float32))
         mask = np.stack(mask_list, axis=self.stack_axis)
         return mask
