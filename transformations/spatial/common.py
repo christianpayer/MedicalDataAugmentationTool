@@ -62,9 +62,12 @@ def create_composite(dim, transformations, merge_affine=False):
             merged_transformations.append(combined_affine_transform)
         transformations = merged_transformations
 
-    compos = sitk.Transform(dim, sitk.sitkIdentity)
-    for transformation in transformations:
-        compos.AddTransform(transformation)
+    if sitk.Version_MajorVersion() == 1:
+        compos = sitk.Transform(dim, sitk.sitkIdentity)
+        for transformation in transformations:
+            compos.AddTransform(transformation)
+    else:
+        compos = sitk.CompositeTransform(transformations)
     return compos
 
 
