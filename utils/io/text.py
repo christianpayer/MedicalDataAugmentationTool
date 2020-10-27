@@ -1,26 +1,46 @@
 
 import csv
 import re
+import json
 from utils.io.common import create_directories_for_file_name
 
 
-def load_dict_csv(file_name, value_type=str):
+def load_dict_csv(file_name, value_type=str, squeeze=True):
     """
     Loads a .csv file as a dict, where the first column indicate the key string
     and the following columns are the corresponding value or list of values.
     :param file_name: The file name to load.
     :param value_type: Each value will be converted to this type.
+    :param squeeze: If true, reduce single entry list to a value.
     :return: A dictionary of every entry of the .csv file.
     """
     d = {}
     with open(file_name, 'r') as file:
         reader = csv.reader(file)
         for row in reader:
-            id = row[0]
+            data_id = row[0]
             value = list(map(value_type, row[1:]))
-            if len(value) == 1:
+            if squeeze and len(value) == 1:
                 value = value[0]
-            d[id] = value
+            d[data_id] = value
+    return d
+
+
+def load_dict_dict_csv(file_name, fieldnames=None):
+    """
+    Loads a .csv file as a dict, where the first column indicate the key string
+    and the following columns are the corresponding values which can be accessed by keys
+    defined in the header of the .csv file, or the given header keys.
+    :param file_name: The file name to load.
+    :param fieldnames: If set, use this list of strings as header and keys, otherwise, use first row of .csv file as keys.
+    :return: A dictionary of dictionaries of every entry of the .csv file.
+    """
+    d = {}
+    with open(file_name, 'r') as file:
+        reader = csv.DictReader(file, fieldnames=fieldnames)
+        for row in reader:
+            data_id = next(iter(row.values()))
+            d[data_id] = row
     return d
 
 
@@ -135,3 +155,17 @@ def save_list_txt(string_list, file_name):
     with open(file_name, 'w') as file:
         string_list_with_endl = [string + '\n' for string in string_list]
         file.writelines(string_list_with_endl)
+
+
+def save_json(obj, file_name, *args, **kwargs):
+    """
+    Saves an object as a json file.
+    :param obj: The object to save.
+    :param file_name: The filename.
+    :param args: args to pass to json.dump()
+    :param kwargs: kwargs to pass to json.dump()
+    :return:
+    """
+    create_directories_for_file_name(file_name)
+    with open(file_name, 'w') as f:
+        json.dump(obj, f, *args, **kwargs)
