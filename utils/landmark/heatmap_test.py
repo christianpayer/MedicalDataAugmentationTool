@@ -6,6 +6,7 @@ import utils.sitk_np
 import utils.np_image
 from utils.landmark.common import Landmark
 import utils.landmark.transform
+from transformations.intensity.np.smooth import gaussian
 
 
 class HeatmapTest(object):
@@ -19,7 +20,8 @@ class HeatmapTest(object):
                  return_multiple_maxima=False,
                  min_max_value=None,
                  multiple_min_max_value_factor=None,
-                 min_max_distance=None):
+                 min_max_distance=None,
+                 smoothing_sigma=0.0):
         """
         Initializer.
         :param channel_axis: The channel axis of the heatmaps of the given numpy arrays.
@@ -29,6 +31,7 @@ class HeatmapTest(object):
         :param min_max_value: The minimal value that is considered as a local maximum.
         :param multiple_min_max_value_factor: multiple_min_max_value_factor multiplied with the overall maximum value of the heatmap is considered as the threshold for local maxima.
         :param min_max_distance: min_max_distance (in pixels) is the minimal distance of two local maxima.
+        :param smoothing_sigma: Smoothing sigma for local maxima calculation.
         """
         self.channel_axis = channel_axis
         self.invert_transformation = invert_transformation
@@ -37,6 +40,7 @@ class HeatmapTest(object):
         self.min_max_value = min_max_value
         self.multiple_min_max_value_factor = multiple_min_max_value_factor
         self.min_max_distance = min_max_distance
+        self.smoothing_sigma = smoothing_sigma
 
     def get_transformed_image_sitk(self, prediction_np, reference_sitk=None, output_spacing=None, transformation=None):
         """
@@ -74,6 +78,24 @@ class HeatmapTest(object):
 
     def get_multiple_maximum_coordinates(self, image):
         """
+        Return local maxima of the image that are larger than self.min_max_value. If self.smoothing_sigma > 0, perform Gaussian smoothing
+        to reduce the number of local maxima.
+        :param image: Heatmap image.
+        :return: List of value, coord tuples of local maxima.
+        """
+        if self.smoothing_sigma > 0.0:
+            image_smoothed = gaussian(image, self.smoothing_sigma)
+            indizes, values = utils.np_image.local_maxima(image_smoothed)
+        else:
+            indizes, values = utils.np_image.local_maxima(image)
+        values_greater = values > self.min_max_value
+        values = values[values_greater]
+        coords = indizes[values_greater]
+        refined_coords = [utils.np_image.refine_coordinate_subpixel(image, c) for c in coords]
+        return list(reversed(sorted(zip(values, refined_coords), key=lambda x: x[0])))
+
+    def get_multiple_maximum_coordinates_min_max_distance(self, image):
+        """
         Return local maxima of the image. At least one local maximum is returned.
         If the local maximum value absolute_max_value > self.min_max_value, also return other local maxima that are at least self.min_max_distance apart, while
         having a value > absolute_max_value * self.multiple_min_max_value_factor.
@@ -107,7 +129,10 @@ class HeatmapTest(object):
         output_spacing = output_spacing or [1] * image.ndim
         if self.return_multiple_maxima:
             landmarks = []
-            value_coord_pairs = self.get_multiple_maximum_coordinates(image)
+            if self.min_max_distance is None:
+                value_coord_pairs = self.get_multiple_maximum_coordinates(image)
+            else:
+                value_coord_pairs = self.get_multiple_maximum_coordinates_min_max_distance(image)
             for value, coord in value_coord_pairs:
                 coord = np.flip(coord, axis=0)
                 coord *= output_spacing
