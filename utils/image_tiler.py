@@ -177,7 +177,7 @@ class ImageTiler(TilerBase):
         :return: The image data on the current offset.
         """
         full_slice, tiled_slice = self.get_current_slices()
-        output_image = np.ones(self.cropped_size) * self.default_pixel_value
+        output_image = np.ones(self.cropped_size, dtype=image.dtype) * self.default_pixel_value
         output_image[tiled_slice] = image[full_slice]
         return output_image
 
@@ -210,7 +210,7 @@ class LandmarkTiler(TilerBase):
         :param landmarks: The landmarks.
         :return: The landmarks shifted by the current offset.
         """
-        return landmarks[:, ...] - np.array(self.current_offset, np.float32)
+        return landmarks[:, ...] - np.array(self.current_offset, dtype=landmarks.dtype)
 
     def set_current_data(self, **kwargs):
         """
