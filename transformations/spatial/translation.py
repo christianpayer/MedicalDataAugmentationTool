@@ -128,7 +128,7 @@ class InputCenterToOrigin(InputCenterTransformBase):
 
 class OriginToInputCenter(InputCenterTransformBase):
     """
-    A translation transformation which transforms the origin to the the input image center.
+    A translation transformation which transforms the origin to the input image center.
     """
     def get(self, **kwargs):
         """
@@ -167,8 +167,8 @@ class OutputCenterTransformBase(TranslateTransformBase):
         :param kwargs: If it contains output_size or output_spacing, use them instead of self.output_size or self.output_spacing. Otherwise, the parameters given to self.get_image_size_spacing(**kwargs).
         :return: List of output center coordinate for each dimension.
         """
-        output_size = kwargs.get('output_size', self.output_size.copy())
-        output_spacing = kwargs.get('output_spacing', self.output_spacing.copy())
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
         if not all(output_size):
             # TODO check, if direction or origin are needed
             input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
@@ -202,7 +202,7 @@ class OutputCenterToOrigin(OutputCenterTransformBase):
 
 class OriginToOutputCenter(OutputCenterTransformBase):
     """
-    A translation transformation which transforms origin to the the output image center.
+    A translation transformation which transforms origin to the output image center.
     """
     def get(self, **kwargs):
         """
@@ -245,6 +245,109 @@ class RandomFactorInput(TranslateTransformBase):
         input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
         assert np.allclose(input_direction, np.eye(self.dim).flatten()), 'this transformation only works for eye direction, is: ' + input_direction
         assert np.allclose(input_origin, np.zeros(self.dim)), 'this transformation only works for zeros origin, is: ' + input_origin
-        current_offset = [(input_size[i] * input_spacing[i] - self.remove_border[i]) * float_uniform(-self.random_factor[i], self.random_factor[i])
-                          for i in range(len(self.random_factor))]
+        max_translation = [input_size[i] * input_spacing[i] - self.remove_border[i][i] for i in range(self.dim)]
+        current_offset = [max_translation[i] * float_uniform(-self.random_factor[i], self.random_factor[i]) for i in range(len(self.random_factor))]
+        return self.get_translate_transform(self.dim, current_offset)
+
+
+class RandomCropInput(TranslateTransformBase):
+    """
+    A translation transform that crops randomly on the input.
+    The input center should usually be at the origin before this transformation.
+    The actual translation value per dimension will be calculated as follows:
+    (input_size[i] * input_spacing[i] - output_size[i] * output_spacing[i]) * float_uniform(-0.5, 0.5) for each dimension.
+    """
+    def __init__(self, dim, output_size, output_spacing=None, *args, **kwargs):
+        """
+        Initializer.
+        :param dim: The dimension.
+        :param output_size: The output image size in pixels.
+        :param output_spacing: The output image spacing in mm.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
+        """
+        super(RandomCropInput, self).__init__(dim, *args, **kwargs)
+        self.output_size = output_size
+        self.output_spacing = output_spacing
+        if self.output_spacing is None:
+            self.output_spacing = [1] * self.dim
+
+    def get(self, **kwargs):
+        """
+        Returns the sitk transform based on the given parameters.
+        :param kwargs: Must contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
+        :return: The sitk.AffineTransform().
+        """
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
+        # TODO check, if direction or origin are really needed
+        input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
+        assert np.allclose(input_direction, np.eye(self.dim).flatten()), 'this transformation only works for eye direction, is: ' + input_direction
+        max_translation = [input_size[i] * input_spacing[i] - output_size[i] * output_spacing[i] for i in range(self.dim)]
+        current_offset = [np.maximum(0.0, max_translation[i]) * float_uniform(-0.5, 0.5) for i in range(self.dim)]
+        return self.get_translate_transform(self.dim, current_offset)
+
+
+class OriginToBoundingBoxCenter(TranslateTransformBase):
+    """
+    A translation transformation which transforms the origin to the center of a bounding box.
+    """
+    def get(self, **kwargs):
+        """
+        Returns the sitk transform based on the given parameters.
+        :param kwargs: Must contain 'start' and 'extent' which define the bounding box in physical coordinates.
+        :return: The sitk.AffineTransform().
+        """
+        start = kwargs.get('start')
+        extent = kwargs.get('extent')
+        current_offset = [-((extent[i] - 1) * 0.5 + start[i]) for i in range(self.dim)]
+        return self.get_translate_transform(self.dim, current_offset)
+
+
+class BoundingBoxCenterToOrigin(TranslateTransformBase):
+    """
+    A translation transformation which transforms the center of a bounding box to the origin.
+    """
+    def get(self, **kwargs):
+        """
+        Returns the sitk transform based on the given parameters.
+        :param kwargs: Must contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
+        :return: The sitk.AffineTransform().
+        """
+        start = kwargs.get('start')
+        extent = kwargs.get('extent')
+        current_offset = [(extent[i] - 1) * 0.5 + start[i] for i in range(self.dim)]
+        return self.get_translate_transform(self.dim, current_offset)
+
+
+class RandomCropBoundingBox(TranslateTransformBase):
+    """
+    Performs a crop inside a bounding box.
+    """
+    def __init__(self, dim, output_size, output_spacing=None, *args, **kwargs):
+        """
+        Initializer.
+        :param dim: The dimension.
+        :param output_size: The output image size in pixels.
+        :param output_spacing: The output image spacing in mm.
+        :param args: Arguments passed to super init.
+        :param kwargs: Keyword arguments passed to super init.
+        """
+        super(RandomCropBoundingBox, self).__init__(dim, *args, **kwargs)
+        self.output_size = output_size
+        self.output_spacing = output_spacing
+        if self.output_spacing is None:
+            self.output_spacing = [1] * self.dim
+
+    def get(self, **kwargs):
+        """
+        Returns the sitk transform based on the given parameters.
+        :param kwargs: Must contain 'start' and 'extent' which define the bounding box in physical coordinates.
+        :return: The sitk.AffineTransform().
+        """
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
+        extent = kwargs.get('extent', self.output_spacing)
+        max_translation = [extent[i] - output_size[i] * output_spacing[i] for i in range(self.dim)]
+        current_offset = [np.maximum(0.0, max_translation[i]) * float_uniform(-0.5, 0.5) for i in range(self.dim)]
         return self.get_translate_transform(self.dim, current_offset)
