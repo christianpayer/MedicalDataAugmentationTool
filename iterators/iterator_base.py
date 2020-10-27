@@ -13,6 +13,14 @@ class IteratorBase(Node):
         """
         raise NotImplementedError
 
+    def get_id_for_index(self, index):
+        """
+        Return the id entry dictionary for the given index
+        :param index: The index in the dataset.
+        :return: The id dictionary.
+        """
+        raise NotImplementedError
+
     def get_next_id(self):
         """
         Returns the next id entry dictionary. The dictionary may contain any entries.
