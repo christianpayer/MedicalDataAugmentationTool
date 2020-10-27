@@ -44,7 +44,8 @@ def normalize_robust(img, out_range=(-1, 1), consideration_factors=(0.1, 0.1)):
     return scale(img, old_range, out_range)
 
 
-def normalize_zero_mean_one_std(img):
+def normalize_zero_mean_unit_variance(img):
     mean = np.mean(img)
     std = np.std(img)
     return (img - mean) / std
+
