@@ -16,6 +16,16 @@ def transform_coords(coords, transformation):
     return np.array(transformation.TransformPoint(coords.astype(np.float64)), np.float32)
 
 
+def transform_coords_inverse(coords, transformation):
+    """
+    Transforms np coords with a given sitk transformation.
+    :param coords: The np coords.
+    :param transformation: The sitk transformation
+    :return: The transformed np coords.
+    """
+    return transform_coords(coords, transformation.GetInverse())
+
+
 def transform_landmark(landmark, transformation):
     """
     Transforms a landmark object with a given sitk transformation.
@@ -119,7 +129,6 @@ def transform_landmarks_inverse_with_resampling(landmarks, transformation, size,
             coords = transformed_landmarks[i].coords
             # calculate distances to current landmark coordinates
             vec = displacement_field - coords
-            #distances = np.sqrt(vec[:, :, :, 0] ** 2 + vec[:, :, :, 1] ** 2 + vec[:, :, :, 2] ** 2)
             distances = np.linalg.norm(vec, axis=3)
             invert_min_distance, transformed_coords = utils.np_image.find_quadratic_subpixel_maximum_in_image(-distances)
             min_distance = -invert_min_distance
