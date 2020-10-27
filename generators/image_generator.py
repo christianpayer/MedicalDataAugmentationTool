@@ -26,11 +26,7 @@ class ImageGenerator(TransformationGeneratorBase):
         """
         Initializer.
         :param dim: The dimension.
-        :param output_size: The resampled output image size in sitk format ([x, y] or [x, y, z]). May contain entries
-                            that are None. In this case, the corresponding dimension will either take the smallest value
-                            out of valid_output_sizes in which the resampled image fits. If valid_output_sizes is not
-                            defined, the output size will be calculated, such that resampled image fits exactly in the
-                            output image.
+        :param output_size: The resampled output image size in sitk format ([x, y] or [x, y, z]).
         :param output_spacing: The resampled output spacing.
         :param post_processing_sitk: A function that will be called after resampling the sitk image. This function
                                      must take a list of sitk images as input and return a list of sitk images.
@@ -95,31 +91,34 @@ class ImageGenerator(TransformationGeneratorBase):
                 size = int(np.ceil(image.GetSize()[i] * image.GetSpacing()[i] / self.output_spacing[i]))
                 output_size.append(size)
         return output_size
-
-    def get_resampled_images(self, images, transformation):
+    
+    def get_resampled_images(self, images, transformation, output_size, output_spacing):
         """
         Transforms the given sitk image (or list of sitk images) with the given transformation.
         :param images: The sitk image (or list of sitk images).
         :param transformation: The sitk transformation.
+        :param output_size: The output size.
+        :param output_spacing: The output spacing.
         :return: The resampled sitk image (or list of sitk images).
         """
         if isinstance(images, list) or isinstance(images, tuple):
-            return [self.get_resampled_image(image, transformation) for image in images]
+            return [self.get_resampled_image(image, transformation, output_size, output_spacing) for image in images]
         else:
-            return self.get_resampled_image(images, transformation)
+            return self.get_resampled_image(images, transformation, output_size, output_spacing)
 
-    def get_resampled_image(self, image, transformation):
+    def get_resampled_image(self, image, transformation, output_size, output_spacing):
         """
         Transforms the given sitk image with the given transformation.
-        :param images: The sitk image.
+        :param image: The sitk image.
         :param transformation: The sitk transformation.
+        :param output_size: The output size.
+        :param output_spacing: The output spacing.
         :return: The resampled sitk image.
         """
-        output_size = self.get_output_size(image)
         output_image = resample(image,
                                 transformation,
                                 output_size,
-                                self.output_spacing,
+                                output_spacing,
                                 interpolator=self.interpolator,
                                 output_pixel_type=self.resample_sitk_pixel_type,
                                 default_pixel_value=self.resample_default_pixel_value)
@@ -177,7 +176,9 @@ class ImageGenerator(TransformationGeneratorBase):
             else: # if self.data_format == 'channels_last':
                 output_image_np = np.zeros(list(reversed(self.output_size)) + [1], self.np_pixel_type)
         else:
-            output_image_sitk = self.get_resampled_images(image, transformation)
+            output_size = kwargs['output_size'] if 'output_size' in kwargs else self.get_output_size(image)
+            output_spacing = kwargs['output_spacing'] if 'output_spacing' in kwargs else self.output_spacing
+            output_image_sitk = self.get_resampled_images(image, transformation, output_size, output_spacing)
 
             if self.post_processing_sitk is not None:
                 output_image_sitk = self.post_processing_sitk(output_image_sitk)
