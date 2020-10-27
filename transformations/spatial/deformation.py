@@ -189,7 +189,9 @@ class Output(Deformation):
         :param kwargs: Must contain either 'image', or 'input_size' and 'input_spacing', which define the input image physical space.
         :return: The sitk.BSplineTransform().
         """
-        physical_dimensions = [self.output_size[i] * self.output_spacing[i] for i in range(self.dim)]
+        output_size = kwargs.get('output_size', self.output_size)
+        output_spacing = kwargs.get('output_spacing', self.output_spacing)
+        physical_dimensions = [output_size[i] * output_spacing[i] for i in range(self.dim)]
 
         current_transformation = self.get_deformation_transform(self.dim,
                                                                 self.grid_nodes,
