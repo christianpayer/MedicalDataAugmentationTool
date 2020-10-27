@@ -18,7 +18,7 @@ class HeatmapImageGenerator(object):
                  sigma,
                  scale_factor,
                  normalize_center=True,
-                 size_sigma_factor=10):
+                 size_sigma_factor=5):
         self.image_size = image_size
         self.sigma = sigma
         self.scale_factor = scale_factor
@@ -26,15 +26,16 @@ class HeatmapImageGenerator(object):
         self.normalize_center = normalize_center
         self.size_sigma_factor = size_sigma_factor
 
-    def generate_heatmap(self, coords, sigma_scale_factor):
+    def generate_heatmap(self, coords, sigma_scale_factor, dtype=np.float32):
         """
         Generates a numpy array of the landmark image for the specified point and parameters.
         :param coords: numpy coordinates ([x], [x, y] or [x, y, z]) of the point.
         :param sigma_scale_factor: Every value of the gaussian is multiplied by this value.
+        :param dtype: The heatmap output type.
         :return: numpy array of the landmark image.
         """
         # landmark holds the image
-        heatmap = np.zeros(self.image_size, dtype=np.float32)
+        heatmap = np.zeros(self.image_size, dtype=dtype)
 
         # flip point from [x, y, z] to [z, y, x]
         flipped_coords = np.flip(coords, 0)
@@ -94,7 +95,7 @@ class HeatmapImageGenerator(object):
 
         return heatmap
 
-    def generate_heatmaps(self, landmarks, stack_axis):
+    def generate_heatmaps(self, landmarks, stack_axis, dtype=np.float32):
         """
         Generates a numpy array landmark images for the specified points and parameters.
         :param landmarks: List of points. A point is a dictionary with the following entries:
@@ -102,17 +103,18 @@ class HeatmapImageGenerator(object):
             'coords': numpy coordinates ([x], [x, y] or [x, y, z]) of the point.
             'scale': scale factor of the point.
         :param stack_axis: The axis where to stack the np arrays.
+        :param dtype: The heatmap output type.
         :return: numpy array of the landmark images.
         """
         heatmap_list = []
 
         for landmark in landmarks:
             if landmark.is_valid:
-                heatmap_list.append(self.generate_heatmap(landmark.coords, landmark.scale))
+                heatmap_list.append(self.generate_heatmap(landmark.coords, landmark.scale, dtype))
             else:
-                heatmap_list.append(np.zeros(self.image_size, np.float32))
+                heatmap_list.append(np.zeros(self.image_size, dtype))
 
         heatmaps = np.stack(heatmap_list, axis=stack_axis)
 
         return heatmaps
-
+    
