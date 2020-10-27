@@ -7,6 +7,17 @@ import utils.sitk_np
 
 
 def get_sitk_interpolator(interpolator):
+    """
+    Return an sitk interpolator object for the given string.
+    :param interpolator: Interpolator type as string.
+                         'nearest': sitk.sitkNearestNeighbor
+                         'linear': sitk.sitkLinear
+                         'cubic': sitk.sitkBSpline
+                         'label_gaussian': sitk.sitkLabelGaussian
+                         'gaussian': sitk.sitkGaussian
+                         'lanczos': sitk.sitkLanczosWindowedSinc
+    :return: The sitk interpolator object.
+    """
     if interpolator == 'nearest':
         return sitk.sitkNearestNeighbor
     elif interpolator == 'linear':
@@ -34,24 +45,16 @@ def resample(input_image,
              default_pixel_value=None):
     """
     Resample a given input image according to a transform.
-
-    :param input_image: ITK image
-        the input image
-    :param transform: SimpleITK.Transform
-        the (composite) transform to be applied
-    :param output_size: list of int
-        default is same as input image
-    :param output_spacing: list of float
-        default is input spacing from input_image
-    :param output_direction: list of float
-        default is input direction from input_image
-    :param default_pixel_value:
-        default is zero
-    :param output_origin: list of int
-        Default is zero-origin for each dimension
-    :param interpolator: SimpleITK.InterpolatorEnum
-        Default is SimpleITK.sitkLinear.
-    :return: the resampled image
+    :param input_image: The input sitk image.
+    :param transform: The sitk transformation to apply to the resample filter
+    :param output_size: The image size in pixels of the output image.
+    :param output_spacing: The spacing in mm of the output image.
+    :param output_direction: The direction matrix of the output image.
+    :param default_pixel_value: The pixel value of pixels outside the image region.
+    :param output_origin: The output origin.
+    :param interpolator: The interpolation function. See get_sitk_interpolator() for possible values.
+    :param output_pixel_type: The output pixel type.
+    :return: The resampled image.
     """
     image_dim = input_image.GetDimension()
     transform_dim = transform.GetDimension()
@@ -83,7 +86,31 @@ def resample(input_image,
 
     return output_image
 
+
+def resample_to_spacing(image, new_spacing, interpolator=None):
+    """
+    Resamples a given image to a given spacing. (see resample)
+    :param image: The image.
+    :param new_spacing: The spacing.
+    :param interpolator: The interpolator. Default is linear.
+    :return: The resampled image.
+    """
+    # TODO: origin should be adapted to incorporate new spacing
+    #  origin is at the center of the first pixel -> it has a 'half' spacing
+    old_spacing = image.GetSpacing()
+    old_size = image.GetSize()
+    old_origin = image.GetOrigin()
+    old_direction = image.GetDirection()
+    new_size = [int(old_sp * old_si / new_sp) for old_sp, old_si, new_sp in zip(old_spacing, old_size, new_spacing)]
+    return resample(image, sitk.AffineTransform(3), new_size, new_spacing, old_origin, old_direction, interpolator)
+
+
 def split_vector_components(image):
+    """
+    Split vector image into list of vector components.
+    :param image: sitk image with vector image type.
+    :return: list of sitk images with scalar image type.
+    """
     filter = sitk.VectorIndexSelectionCastImageFilter()
     output = []
     for i in range(image.GetNumberOfComponentsPerPixel()):
@@ -91,7 +118,13 @@ def split_vector_components(image):
         output.append(filter.Execute(image))
     return output
 
+
 def merge_vector_components(images):
+    """
+    Merge sitk images into an sitk image with vector image type.
+    :param images: list of sitk images with scalar image type.
+    :return: sitk image with vector image type.
+    """
     filter = sitk.ComposeImageFilter()
     output = filter.Execute(images)
     return output
@@ -199,6 +232,19 @@ def split_label_image(image, labels):
     return splits
 
 
+def split_multi_label_image(image, labels):
+    dim_to_split = -1 #collapse channel dimension (expects 'channels_first'; numpy and itk dimension order is reversed!)
+    size = list(image.GetSize())
+    size[dim_to_split] = 0
+    splits = []
+    index = [0] * len(size)
+    for label in labels:
+        index[dim_to_split] = label
+        split = sitk.Extract(image, size, index)
+        splits.append(split)
+    return splits
+
+
 def merge_label_images(images, labels):
     images_np = [utils.sitk_np.sitk_to_np_no_copy(image) for image in images]
     merged_np = utils.np_image.merge_label_images(images_np, labels)
@@ -302,12 +348,20 @@ def apply_np_image_function(image, f):
     copy_information(image, output)
     return output
 
-def hausdorff_distances(image_0, image_1, labels):
-    label_images_0 = utils.sitk_image.split_label_image(image_0, labels)
-    label_images_1 = utils.sitk_image.split_label_image(image_1, labels)
+def hausdorff_distances(image_0, image_1, labels, multi_label=False):
+    if multi_label:
+        label_images_0 = utils.sitk_image.split_vector_components(image_0)
+        label_images_1 = utils.sitk_image.split_vector_components(image_1)
+    else:
+        label_images_0 = utils.sitk_image.split_label_image(image_0, labels)
+        label_images_1 = utils.sitk_image.split_label_image(image_1, labels)
     hausdorff_distance_list = []
     average_hausdorff_distance_list = []
     for label_image_0, label_image_1 in zip(label_images_0, label_images_1):
+        assert label_image_0.GetPixelIDValue() != -1, "ITK PixelIDValue: -1 == 'Unknown'"
+        assert label_image_1.GetPixelIDValue() != -1, "ITK PixelIDValue: -1 == 'Unknown'"
+        assert label_image_0.GetPixelIDValue() == label_image_1.GetPixelIDValue(),\
+            "ITK PixelIDValue has to be the same for both images, otherwise HausdorffDistanceImageFilter results in nan"
         try:
             filter = sitk.HausdorffDistanceImageFilter()
             filter.Execute(label_image_0, label_image_1)
@@ -400,7 +454,14 @@ def surface_distances(image_0, image_1, labels, calculate_mean=True, calculate_m
         return_tuple += (max_surface_distance_list,)
     return return_tuple
 
-def label_to_rgb(label):
+
+def label_to_rgb(label, float_range=True):
+    """
+    Converts a label index to a color. Uses lookup table from ITK.
+    :param label: The label index.
+    :param float_range: If true, RGB values are in float, i.e., (1.0, 0.5, 0.0), otherwise in byte (255, 128, 0)
+    :return: RGB color as a list.
+    """
     colormap = [[255, 0, 0], [0, 205, 0], [0, 0, 255], [0, 255, 255],
         [255, 0, 255], [255, 127, 0], [0, 100, 0], [138, 43, 226],
         [139, 35, 35], [0, 0, 128], [139, 139, 0], [255, 62, 150],
@@ -410,7 +471,10 @@ def label_to_rgb(label):
         [205, 79, 57], [0, 0, 205], [139, 34, 82], [139, 0, 139],
         [238, 130, 238], [139, 0, 0]]
     color = colormap[label % len(colormap)]
+    if float_range:
+        color = [c / 255.0 for c in color]
     return color
+
 
 def set_spacing_origin_direction(image, spacing, origin, direction):
     if spacing is not None:
