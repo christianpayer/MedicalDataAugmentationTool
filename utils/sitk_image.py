@@ -102,7 +102,7 @@ def resample_to_spacing(image, new_spacing, interpolator=None):
     old_origin = image.GetOrigin()
     old_direction = image.GetDirection()
     new_size = [int(old_sp * old_si / new_sp) for old_sp, old_si, new_sp in zip(old_spacing, old_size, new_spacing)]
-    return resample(image, sitk.AffineTransform(3), new_size, new_spacing, old_origin, old_direction, interpolator)
+    return resample(image, sitk.AffineTransform(len(new_spacing)), new_size, new_spacing, old_origin, old_direction, interpolator)
 
 
 def split_vector_components(image):
