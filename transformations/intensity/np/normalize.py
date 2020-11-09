@@ -2,13 +2,8 @@ import numpy as np
 
 
 def robust_min_max(img, consideration_factors=(0.1, 0.1)):
-    # sort flattened image
-    img_sort = np.sort(img, axis=None)
-    # consider x% values
-    min_median_index = int(img.size * consideration_factors[0] * 0.5)
-    max_median_index = int(img.size * (1 - consideration_factors[1] * 0.5)) - 1
-    # return median of highest x% intensity values
-    return img_sort[min_median_index], img_sort[max_median_index]
+    # TODO: the 0.5 is used due to backwards compatibility.
+    return np.quantile(img, [consideration_factors[0] * 0.5, 1 - consideration_factors[1] * 0.5])
 
 
 def scale(img, old_range, new_range):
