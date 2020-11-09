@@ -55,6 +55,8 @@ class LandmarkVisualization(LandmarkVisualizationBase):
         :param annotation_color: The annotation color.
         """
         coords = landmark.coords
+        if self.spacing is not None:
+            coords = coords / self.spacing
         draw_circle(image_canvas, [coords[1], coords[0]], self.radius, color)
 
     def visualize_from_to_landmark_offset(self, image_canvas, landmark_from, landmark_to, color):
