@@ -152,7 +152,7 @@ class LandmarkVisualizationBase(object):
         else:
             return label_to_rgb(index, float_range=False)
 
-    def visualize_landmarks(self, image_canvas, landmarks, landmark_colors, annotations=None):
+    def visualize_landmarks(self, image_canvas, landmarks, landmark_colors, annotations):
         """
         Visualize landmarks to an image canvas.
         :param image_canvas: The image canvas to write to.
@@ -165,7 +165,7 @@ class LandmarkVisualizationBase(object):
             annotation = annotations[i] if annotations is not None else None
             self.visualize_landmark_single(image_canvas, l, landmark_color, annotation)
 
-    def visualize_landmark_offsets(self, image_canvas, predicted, groundtruth, landmark_colors, annotations=None):
+    def visualize_landmark_offsets(self, image_canvas, predicted, groundtruth, landmark_colors, annotations):
         """
         Visualize predicted and groundtruth landmarks to an image canvas.
         :param image_canvas: The image canvas to write to.
@@ -210,7 +210,7 @@ class LandmarkVisualizationBase(object):
             color = self.missed_color
             self.visualize_landmark(image_canvas, groundtruth, color, annotation, color)
 
-    def visualize_landmark_projections(self, image_sitk, landmarks, filename=None):
+    def visualize_landmark_projections(self, image_sitk, landmarks, filename):
         """
         Visualize landmarks onto projections of a given sitk image.
         :param image_sitk: The sitk image (that will be projected in case of 3D).
@@ -220,11 +220,11 @@ class LandmarkVisualizationBase(object):
         image_canvas_list = self.prepare_image_canvas_list(image_sitk)
         projected_landmarks_list = self.project_landmarks_list(landmarks)
         for image_canvas, projected_landmarks in zip(image_canvas_list, projected_landmarks_list):
-            self.visualize_landmarks(image_canvas, projected_landmarks, self.landmark_colors)
+            self.visualize_landmarks(image_canvas, projected_landmarks, self.landmark_colors, self.annotations)
         image_canvas_merged = self.merge_image_canvas(image_canvas_list)
         self.save(image_canvas_merged, filename)
 
-    def visualize_prediction_groundtruth_projections(self, image_sitk, predicted, groundtruth, filename=None):
+    def visualize_prediction_groundtruth_projections(self, image_sitk, predicted, groundtruth, filename):
         """
         Visualize prediction groundtruth pairs onto projections of a given sitk image.
         :param image_sitk: The sitk image (that will be projected in case of 3D).
@@ -236,11 +236,11 @@ class LandmarkVisualizationBase(object):
         projected_predicted_list = self.project_landmarks_list(predicted)
         projected_groundtruth_list = self.project_landmarks_list(groundtruth)
         for image_canvas, projected_predicted, projected_groundtruth in zip(image_canvas_list, projected_predicted_list, projected_groundtruth_list):
-            self.visualize_landmark_offsets(image_canvas, projected_predicted, projected_groundtruth, self.landmark_colors)
+            self.visualize_landmark_offsets(image_canvas, projected_predicted, projected_groundtruth, self.landmark_colors, self.annotations)
         image_canvas_merged = self.merge_image_canvas(image_canvas_list)
         self.save(image_canvas_merged, filename)
 
-    def visualize_landmark_list_projections(self, image_sitk, landmarks_list, landmark_colors_list, filename=None):
+    def visualize_landmark_list_projections(self, image_sitk, landmarks_list, landmark_colors_list, filename):
         """
         Visualize list of landmarks onto projections of a given sitk image.
         :param image_sitk: The sitk image (that will be projected in case of 3D).
@@ -253,11 +253,11 @@ class LandmarkVisualizationBase(object):
             landmark_colors = self.landmark_colors if landmark_colors_list is None else landmark_colors_list[i]
             projected_landmarks_list = self.project_landmarks_list(landmarks)
             for image_canvas, projected_landmarks in zip(image_canvas_list, projected_landmarks_list):
-                self.visualize_landmarks(image_canvas, projected_landmarks, landmark_colors=landmark_colors)
+                self.visualize_landmarks(image_canvas, projected_landmarks, landmark_colors, self.annotations)
         image_canvas_merged = self.merge_image_canvas(image_canvas_list)
         self.save(image_canvas_merged, filename)
 
-    def visualize_offsets_to_reference_projections(self, image_sitk, reference_groundtruth, predicted_per_image_id_list, groundtruth_per_image_id, landmark_colors_list=None, filename=None):
+    def visualize_offsets_to_reference_projections(self, image_sitk, reference_groundtruth, predicted_per_image_id_list, groundtruth_per_image_id, landmark_colors_list, filename):
         """
         Visualize landmarks or landmark pairs onto projections of a given sitk image.
         :param image_sitk: The sitk image (that will be projected in case of 3D).
@@ -274,10 +274,10 @@ class LandmarkVisualizationBase(object):
                 offsets = [Landmark(p.coords - g.coords + r.coords) for p, g, r in zip(predicted_per_image_id[image_id], groundtruth, reference_groundtruth)]
                 projected_offset_list = self.project_landmarks_list(offsets)
                 for image_canvas, projected_offsets in zip(image_canvas_list, projected_offset_list):
-                    self.visualize_landmarks(image_canvas, projected_offsets, landmark_colors=landmark_colors)
+                    self.visualize_landmarks(image_canvas, projected_offsets, landmark_colors, self.annotations)
         # visualize black dots on original groundtruth
         projected_reference_groundtruth_list = self.project_landmarks_list(reference_groundtruth)
         for image_canvas, projected_reference_groundtruth in zip(image_canvas_list, projected_reference_groundtruth_list):
-            self.visualize_landmarks(image_canvas, projected_reference_groundtruth, landmark_colors=[(0, 0, 0) for _ in range(len(projected_reference_groundtruth))])
+            self.visualize_landmarks(image_canvas, projected_reference_groundtruth, [(0, 0, 0) for _ in range(len(projected_reference_groundtruth))], self.annotations)
         image_canvas_merged = self.merge_image_canvas(image_canvas_list)
         self.save(image_canvas_merged, filename)
