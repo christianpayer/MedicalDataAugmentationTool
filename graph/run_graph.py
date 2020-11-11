@@ -1,5 +1,4 @@
 
-import queue
 from graph.node import Node
 
 
@@ -19,13 +18,13 @@ def run_graph(fetches, feed_dict=None):
         current_fetches.update(feed_dict)
 
     # create Lifo queue and add current fetches list.
-    node_queue = queue.LifoQueue()
+    node_queue = []
     for fetch in fetches:
-        if feed_dict is None or fetch not in feed_dict:
-            node_queue.put(fetch)
+        if (feed_dict is None or fetch not in feed_dict) and (fetch not in node_queue):
+            node_queue.append(fetch)
 
-    while not node_queue.empty():
-        current_node = node_queue.get()
+    while len(node_queue) > 0:
+        current_node = node_queue.pop()
         assert isinstance(current_node, Node), 'The current node is not a Node object. Either set its value via feed_dict or fix the graph. current_node = ' + str(current_node)
 
         # check if parents are already calculated
@@ -36,10 +35,13 @@ def run_graph(fetches, feed_dict=None):
                 # if current parent is not calculated,
                 # add the current node again (only once) to the queue
                 if all_parents_calculated is True:
-                    node_queue.put(current_node)
+                    node_queue.append(current_node)
                     all_parents_calculated = False
+                # if parent is somewhere in node_queue, delete it such that it will not be calculated twice
+                if parent in node_queue:
+                    node_queue.remove(parent)
                 # add parent as next node to the queue
-                node_queue.put(parent)
+                node_queue.append(parent)
 
         if all_parents_calculated is False:
             continue
@@ -60,7 +62,7 @@ def run_graph(fetches, feed_dict=None):
 
         # if current_output is a Node object, put it into the node_queue as it probably needs to be processed
         if isinstance(current_output, Node):
-            node_queue.put(current_output)
+            node_queue.append(current_output)
 
     fetches_outputs = [current_fetches[fetch] for fetch in fetches]
 

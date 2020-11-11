@@ -50,10 +50,10 @@ class GraphDataset(DebugImageDataset):
         # create a list of all nodes to fetch
         all_fetches = [] + self.data_generators
         # optionally add data_sources and transformations
-        if self.data_sources is not None:
-            all_fetches += self.data_sources
         if self.transformations is not None:
             all_fetches += self.transformations
+        if self.data_sources is not None:
+            all_fetches += self.data_sources
         if self.iterator is not None:
             all_fetches += [self.iterator]
         values = run_graph(all_fetches, feed_dict=feed_dict)
@@ -65,13 +65,13 @@ class GraphDataset(DebugImageDataset):
         start_index += end_index
 
         # optionally set datasources and transformations
-        if self.data_sources is not None:
-            end_index = start_index + len(self.data_sources)
-            entry['datasources'] = dict([(node.name, value) for node, value in zip(self.data_sources, values[start_index:end_index])])
-            start_index = end_index
         if self.transformations is not None:
             end_index = start_index + len(self.transformations)
             entry['transformations'] = dict([(node.name, value) for node, value in zip(self.transformations, values[start_index:end_index])])
+            start_index = end_index
+        if self.data_sources is not None:
+            end_index = start_index + len(self.data_sources)
+            entry['datasources'] = dict([(node.name, value) for node, value in zip(self.data_sources, values[start_index:end_index])])
             start_index = end_index
         if self.iterator is not None:
             entry['id'] = values[start_index]
