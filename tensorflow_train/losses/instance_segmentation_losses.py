@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.utils.data_format import get_image_axes
 from tensorflow_train.utils.tensorflow_util import reduce_mean_masked, reduce_sum_masked
 

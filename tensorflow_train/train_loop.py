@@ -1,6 +1,6 @@
 
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import numpy as np
 import sys
 from tensorflow_train.utils.summary_handler import SummaryHandler, create_summary_placeholder
@@ -11,6 +11,7 @@ from glob import glob
 
 class MainLoopBase(object):
     def __init__(self):
+        tf.disable_v2_behavior()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)

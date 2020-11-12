@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.layers.conv_lstm import ConvGRUCell
 from tensorflow_train.networks.unet_base import UnetBase
 from tensorflow_train.utils.data_format import get_batch_channel_image_size

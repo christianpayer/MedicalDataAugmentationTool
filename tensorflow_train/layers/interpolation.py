@@ -2,7 +2,7 @@
 import math
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_train.utils.data_format import get_tf_data_format, get_channel_index, get_image_size, get_tensor_shape
 

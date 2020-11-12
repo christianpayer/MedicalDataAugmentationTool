@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_train.layers.initializers import he_initializer, selu_initializer, zeros_initializer
 from tensorflow_train.layers.normalizers import batch_norm, instance_norm, layer_norm, batch_norm_dense

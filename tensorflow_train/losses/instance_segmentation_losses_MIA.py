@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.utils.tensorflow_util import reduce_mean_masked, reduce_sum_masked, masked_bit, save_divide, save_reduce_mean, most_significant_bit, reduce_median_masked
 
 

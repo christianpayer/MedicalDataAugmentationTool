@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.layers.layers import concat_channels
 from tensorflow_train.layers.conv_lstm import ConvLSTMCell, ConvGRUCell
 from tensorflow_train.networks.unet_base import UnetBase, UnetBase2D

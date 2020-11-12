@@ -3,7 +3,7 @@ import csv
 import datetime
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_train.utils.tensorflow_util import create_reset_metric
 from collections import OrderedDict

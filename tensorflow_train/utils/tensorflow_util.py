@@ -1,6 +1,6 @@
 
 from collections import OrderedDict
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def create_reset_metric(metric, variable_scope, **metric_args):
@@ -11,9 +11,9 @@ def create_reset_metric(metric, variable_scope, **metric_args):
     :param metric_args: The args used for generating the metric.
     :return: Tensors of the metric, its update, and reset operation.
     """
-    with tf.variable_scope(variable_scope) as scope:
+    with tf.variable_scope(variable_scope):
         metric_op, update_op = metric(**metric_args)
-        vars = tf.contrib.framework.get_variables(scope, collection=tf.GraphKeys.LOCAL_VARIABLES)
+        vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES, variable_scope)
         reset_op = tf.variables_initializer(vars)
     return metric_op, update_op, reset_op
 

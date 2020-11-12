@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.layers.layers import conv2d, max_pool2d, upsample2d, conv3d, max_pool3d, upsample3d
 from tensorflow_train.layers.initializers import he_initializer
 

@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 def get_tf_data_format(inputs, data_format):
     if inputs.shape.ndims == 4:

@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.data_generator_base import DataGeneratorBase
 
 class DataGenerator(DataGeneratorBase):

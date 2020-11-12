@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.layers.layers import conv2d, conv3d
 
 class ConvLSTMCell(tf.nn.rnn_cell.RNNCell):

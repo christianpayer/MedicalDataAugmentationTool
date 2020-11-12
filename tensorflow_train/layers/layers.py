@@ -1,6 +1,6 @@
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.layers.initializers import he_initializer, zeros_initializer
 from tensorflow_train.utils.data_format import get_channel_index
 from tensorflow_train.utils.print_utils import print_conv_parameters, print_pool_parameters, print_dropout_parameters, print_upsample_parameters, print_shape_parameters, print_dense_parameters
@@ -129,7 +129,7 @@ def conv2d_transpose(inputs,
 
 
 def upsample2d(inputs, kernel_size, name='', data_format='channels_first', debug_print=debug_print_upsample):
-    outputs = tf.contrib.keras.layers.UpSampling2D(kernel_size, data_format=data_format, name=name)(inputs)
+    outputs = tf.keras.layers.UpSampling2D(kernel_size, data_format=data_format, name=name)(inputs)
     if debug_print:
         print_upsample_parameters('nn',
                                   inputs,
@@ -381,7 +381,7 @@ def conv3d_transpose_unknown_dim(inputs,
 
 
 def upsample3d(inputs, kernel_size, name='', data_format='channels_first', debug_print=debug_print_upsample):
-    outputs = tf.identity(tf.contrib.keras.layers.UpSampling3D(kernel_size, data_format=data_format, name=name)(inputs), name=name+'/output')
+    outputs = tf.identity(tf.keras.layers.UpSampling3D(kernel_size, data_format=data_format, name=name)(inputs), name=name+'/output')
     if debug_print:
         print_upsample_parameters('nn',
                                   inputs,
@@ -470,12 +470,7 @@ def dropout(inputs, rate, name='', is_training=False, debug_print=debug_print_ot
 
 
 def alpha_dropout(inputs, rate, name='', is_training=False, debug_print=debug_print_others):
-    if is_training:
-        keep_prob = 1 - rate
-        outputs = tf.contrib.nn.alpha_dropout(inputs, keep_prob=keep_prob, name=name)
-    else:
-        keep_prob = 1
-        outputs = tf.contrib.nn.alpha_dropout(inputs, keep_prob=keep_prob, name=name)
+    outputs = tf.keras.layers.AlphaDropout(rate, name=name)(inputs, training=is_training)
     if debug_print:
         print_dropout_parameters(name=name, rate=rate, is_training=is_training)
     return outputs

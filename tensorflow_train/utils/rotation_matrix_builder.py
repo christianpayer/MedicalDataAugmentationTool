@@ -2,7 +2,7 @@
 from utils.random import float_uniform
 import numpy as np
 import math
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 class Plane(object):

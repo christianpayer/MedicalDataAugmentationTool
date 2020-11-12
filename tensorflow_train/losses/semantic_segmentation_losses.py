@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.utils.data_format import get_image_axes, get_channel_index
 from tensorflow_train.utils.tensorflow_util import reduce_mean_weighted
 

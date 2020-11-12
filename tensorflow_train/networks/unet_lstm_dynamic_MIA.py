@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.networks.unet_base import UnetBase
 from tensorflow_train.utils.data_format import get_batch_channel_image_size
 from tensorflow_train.layers.layers import conv2d
@@ -14,9 +14,9 @@ class UnetRecurrentWithStates(UnetBase):
         for i in range(self.num_levels):
             for j in range(self.recurrents_per_level):
                 if self.data_format == 'channels_last':
-                    state_size = tf.TensorShape([s / (2 ** i) for s in shape] + [self.num_filters(i)])
+                    state_size = tf.TensorShape([s // (2 ** i) for s in shape] + [self.num_filters(i)])
                 else:
-                    state_size = tf.TensorShape([self.num_filters(i)] + [s / (2 ** i) for s in shape])
+                    state_size = tf.TensorShape([self.num_filters(i)] + [s // (2 ** i) for s in shape])
                 if lstm:
                     state_size_list.append(tf.nn.rnn_cell.LSTMStateTuple(state_size, state_size))
                 else:

@@ -3,9 +3,9 @@ import csv
 import datetime
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-import tensorflow_train.utils.tensorflow_util
+from tensorflow_train.utils.tensorflow_util import create_reset_metric
 
 
 class LossAggregator(object):
@@ -19,7 +19,7 @@ class LossAggregator(object):
         self.summary = summary
         self.summary_placeholders = summary_placeholders
         for key, value in sorted(loss_dict.items()):
-            self.loss_metrics[key] = tensorflow_train.utils.tensorflow_util.create_reset_metric(tf.contrib.metrics.streaming_mean, key + '_' + name, values=value, name=name + '/' + key)
+            self.loss_metrics[key] = create_reset_metric(tf.metrics.mean, key + '_' + name, values=value, name=name + '/' + key)
         self.summary_writer = tf.summary.FileWriter(summary_folder, self.session.graph)
         self.last_finalize_time = datetime.datetime.now()
 

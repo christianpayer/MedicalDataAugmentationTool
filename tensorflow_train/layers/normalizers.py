@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow_train.utils.data_format import get_channel_index, get_image_axes, get_tf_data_format_2d
 
 
@@ -22,11 +22,9 @@ def instance_norm(inputs, is_training, name='', data_format='channels_first', ep
 
 def batch_norm(inputs, is_training, name='', data_format='channels_first'):
     # use faster fused batch_norm for 4 channel tensors
-    if inputs.shape.ndims == 4:
-        data_format_tf = get_tf_data_format_2d(data_format)
-        return tf.contrib.layers.batch_norm(inputs, is_training=is_training, data_format=data_format_tf, fused=True, scope=name + '/bn')
-    elif inputs.shape.ndims == 5:
-        return tf.layers.batch_normalization(inputs, axis=1, name=name + '/bn', training=is_training)
+    if inputs.shape.ndims == 4 or inputs.shape.ndims == 5:
+        channel_index = get_channel_index(inputs, data_format)
+        return tf.layers.batch_normalization(inputs, axis=channel_index, name=name + '/bn', training=is_training)
     else:
         raise Exception('This batch_norm only supports images. Use batch_norm_dense or basic tensorflow version instead.')
 
