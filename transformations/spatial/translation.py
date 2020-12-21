@@ -245,7 +245,7 @@ class RandomFactorInput(TranslateTransformBase):
         input_size, input_spacing, input_direction, input_origin = self.get_image_size_spacing_direction_origin(**kwargs)
         assert np.allclose(input_direction, np.eye(self.dim).flatten()), 'this transformation only works for eye direction, is: ' + input_direction
         assert np.allclose(input_origin, np.zeros(self.dim)), 'this transformation only works for zeros origin, is: ' + input_origin
-        max_translation = [input_size[i] * input_spacing[i] - self.remove_border[i][i] for i in range(self.dim)]
+        max_translation = [input_size[i] * input_spacing[i] - self.remove_border[i] for i in range(self.dim)]
         current_offset = [max_translation[i] * float_uniform(-self.random_factor[i], self.random_factor[i]) for i in range(len(self.random_factor))]
         return self.get_translate_transform(self.dim, current_offset)
 
