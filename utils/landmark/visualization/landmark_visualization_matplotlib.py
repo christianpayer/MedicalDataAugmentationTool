@@ -70,7 +70,7 @@ class LandmarkVisualizationMatplotlib(LandmarkVisualizationBase):
         """
         coords = landmark.coords
         if self.spacing is not None:
-            coords = coords / self.spacing
+            coords = [c / s for c, s in zip(coords, self.spacing)]
         p = mpatches.Circle((coords[0], coords[1]), self.radius, facecolor=[c / 255.0 for c in color], edgecolor=None)
         image_canvas.add_patch(p)
         if annotation is not None:
