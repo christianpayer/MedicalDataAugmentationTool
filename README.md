@@ -12,9 +12,20 @@ List of experiment repositories:
   * [MMWHS](https://github.com/christianpayer/MedicalDataAugmentationTool-MMWHS)
   * [CellTracking](https://github.com/christianpayer/MedicalDataAugmentationTool-CellTracking)
   * [VerSe](https://github.com/christianpayer/MedicalDataAugmentationTool-VerSe)
+  * [HeatmapUncertainty](https://github.com/christianpayer/MedicalDataAugmentationTool-HeatmapUncertainty)
 
 ## Citation
 If you use this code for your research, please cite any of our papers.
+
+Modeling Annotation Uncertainty with Gaussian Heatmaps in Landmark Localization
+```
+@article{Thaler2021,
+title   = {Modeling Annotation Uncertainty with Gaussian Heatmaps in Landmark Localization},
+author  = {Thaler, Franz and Payer, Christian and Urschler, Martin and {\v{S}}tern, Darko},
+journal = {Journal of Machine Learning for Biomedical Imaging},
+year    = {2021}
+}
+```
 
 [Coarse to Fine Vertebrae Localization and Segmentation with SpatialConfiguration-Net and U-Net](https://doi.org/10.5220/0008975201240133)
 
