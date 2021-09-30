@@ -1,5 +1,3 @@
-
-import SimpleITK as sitk
 import numpy as np
 import utils.geometry
 import utils.sitk_image
@@ -31,6 +29,9 @@ class SegmentationStatistics(object):
     def add_labels(self, current_id, prediction_labels, groundtruth_labels):
         current_metric_values = self.get_metric_values(prediction_labels, groundtruth_labels)
         self.metric_values[current_id] = current_metric_values
+
+    def set_metric_values(self, current_id, metric_values):
+        self.metric_values[current_id] = metric_values
 
     def get_metric_mean_list(self, metric_key):
         metric_values_list = [current_metric_values[metric_key] for current_metric_values in self.metric_values.values()]

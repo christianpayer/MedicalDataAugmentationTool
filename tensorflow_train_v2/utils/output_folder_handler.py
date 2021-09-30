@@ -10,6 +10,7 @@ class OutputFolderHandler(object):
     """
     Class that manages output folders.
     """
+
     def __init__(self, base_folder, model_name=None, loss_name=None, additional_info=None, cv=None, use_timestamp=True, files_to_copy=None, stdout_file_name='output.log'):
         """
         Initializer.
@@ -35,6 +36,7 @@ class OutputFolderHandler(object):
         self.stdout_file = None
         self.stdout_backup = None
         self.output_folder = None
+        self.current_output_folder = None
         self.create_output_folder()
         self.copy_files()
         self.redirect_stdout()
@@ -114,7 +116,10 @@ class OutputFolderHandler(object):
         :param paths: Paths to append (see os.path.join).
         :return: The folder.
         """
-        return os.path.join(self.output_folder, *paths)
+        if self.current_output_folder:
+            return os.path.join(self.output_folder, self.current_output_folder, *paths)
+        else:
+            return os.path.join(self.output_folder, *paths)
 
     def path_for_iteration(self, iteration, *paths):
         """
@@ -123,4 +128,59 @@ class OutputFolderHandler(object):
         :param paths: Paths to append (see os.path.join).
         :return: The folder.
         """
-        return os.path.join(self.output_folder, 'iter_' + str(iteration), *paths)
+        return self.path('iter_' + str(iteration), *paths)
+
+    def set_current_path(self, *paths):
+        """
+        Set the current path for the iteration.
+        :param paths: Paths to set (see os.path.join).
+        """
+        if len(paths) == 0 or paths[0] == None:
+            self.current_output_folder = None
+        else:
+            self.current_output_folder = os.path.join(*paths)
+
+    def set_current_path_for_iteration(self, iteration, *paths):
+        """
+        Set the current path for the iteration.
+        :param iteration: The current iteration.
+        :param paths: Paths to append (see os.path.join).
+        """
+        self.current_output_folder = os.path.join('iter_' + str(iteration), *paths)
+
+    def folder(self, folder):
+        """
+        Return the base folder appended with the given folder.
+        :param folder: Folder to append.
+        :return: The folder.
+        """
+        print('DeprecationWarning: this function may removed in newer versions. Use path() instead.')
+        return self.path(folder)
+
+    def folder_for_iteration(self, iteration):
+        """
+        Return the base folder plus 'iter_{iteration}'.
+        :param iteration: The current iteration.
+        :return: The folder.
+        """
+        print('DeprecationWarning: this function may removed in newer versions. Use path() instead.')
+        return self.path_for_iteration(iteration)
+
+    def file(self, file_name):
+        """
+        Return the base folder appended with the given filename.
+        :param file_name: Filename to append.
+        :return: The folder.
+        """
+        print('DeprecationWarning: this function may removed in newer versions. Use path() instead.')
+        return self.path(file_name)
+
+    def file_for_iteration(self, file_name, iteration):
+        """
+        Return the base folder plus 'iter_{iteration}/file_name'.
+        :param file_name: Filename to append.
+        :param iteration: The current iteration.
+        :return: The folder.
+        """
+        print('DeprecationWarning: this function may removed in newer versions. Use path_for_iteration() instead.')
+        return self.path_for_iteration(iteration, file_name)
