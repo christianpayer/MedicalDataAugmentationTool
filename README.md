@@ -17,7 +17,7 @@ List of experiment repositories:
 ## Citation
 If you use this code for your research, please cite any of our papers.
 
-Modeling Annotation Uncertainty with Gaussian Heatmaps in Landmark Localization
+[Modeling Annotation Uncertainty with Gaussian Heatmaps in Landmark Localization](https://github.com/christianpayer/MedicalDataAugmentationTool-HeatmapUncertainty)
 ```
 @article{Thaler2021,
 title   = {Modeling Annotation Uncertainty with Gaussian Heatmaps in Landmark Localization},
